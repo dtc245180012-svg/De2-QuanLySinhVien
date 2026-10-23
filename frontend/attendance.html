@@ -3,16 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Hệ thống Điểm danh - Chấm công</title>
+<title>Hệ thống Điểm danh - Điểm danh sinh viên</title>
 <link rel="stylesheet" href="css/style.css?v=2.5">
 </head>
 <body>
 <header class="topbar">
-    <div class="brand-sm">ĐIỂM DANH</div>
+    <div class="brand-sm">ĐIỂM DANH SINH VIÊN</div>
     <nav>
         <a href="dashboard.html">Dashboard</a>
-        <a href="employees.html">Sinh viên / Nhân viên</a>
-        <a href="departments.html">Khoa / Lớp</a>
+        <a href="employees.html">Sinh viên</a>
+        <a href="departments.html">Lớp học / Khoa</a>
         <a href="shifts.html">Ca / Tiết học</a>
         <a href="attendance.html" class="active">Điểm danh</a>
     </nav>
@@ -23,44 +23,50 @@
 </header>
 
 <main class="container">
-    <h1>Chấm công tự động bằng khuôn mặt</h1>
+    <h1>Điểm danh sinh viên bằng nhận diện khuôn mặt</h1>
 
     <div class="grid grid-2">
         <div class="card">
-            <h2>Camera</h2>
+            <h2>Camera nhận diện</h2>
             <video id="video" autoplay playsinline width="100%" style="background:#000;border-radius:6px"></video>
             <div style="margin-top:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
                 <button id="btnStartCam" class="btn btn-primary">Bật camera</button>
                 <button id="btnStopCam"  class="btn" disabled>Tắt camera</button>
-                <button id="btnCapture"  class="btn btn-primary" disabled style="font-weight:600">Chấm công</button>
+                <button id="btnCapture"  class="btn btn-primary" disabled style="font-weight:600">Điểm danh</button>
                 <label class="btn" style="cursor:pointer;margin:0;display:inline-flex;align-items:center" title="Tải ảnh khuôn mặt từ thiết bị">
                     Tải ảnh lên
                     <input id="fileInput" type="file" accept="image/*" style="display:none">
                 </label>
             </div>
-            <p id="captureHint" class="muted" style="margin-top:8px">Hãy đưa mặt vào khung hình rồi bấm "Chấm công".</p>
+            <p id="captureHint" class="muted" style="margin-top:8px">Hãy đưa khuôn mặt vào khung hình camera rồi bấm "Điểm danh".</p>
         </div>
 
         <div class="card">
-            <h2>Kết quả</h2>
+            <h2>Kết quả nhận diện</h2>
             <div id="resultBox" class="result-empty">Chưa có kết quả.</div>
         </div>
     </div>
 
     <div class="card">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-            <h2 id="attHistoryTitle" style="margin: 0;">Lịch sử chấm công gần đây</h2>
-            <button id="btnReloadAtt" class="btn btn-sm">Tải lại</button>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+            <h2 id="attHistoryTitle" style="margin: 0;">Lịch sử điểm danh sinh viên gần đây</h2>
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <button id="btnManualCheckModal" class="btn btn-primary" style="display: none; align-items: center; gap: 6px; font-weight: 600;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+                    + Điểm danh thủ công
+                </button>
+                <button id="btnReloadAtt" class="btn btn-sm">Tải lại</button>
+            </div>
         </div>
         <table class="table" id="myAttTable">
             <thead>
                 <tr>
                     <th>Ngày</th>
-                    <th>Nhân viên</th>
+                    <th>Sinh viên (MSSV)</th>
                     <th>Giờ vào</th>
                     <th>Giờ ra</th>
                     <th>Trạng thái</th>
-                    <th>Độ tin cậy</th>
+                    <th>Độ tin cậy / Phương thức</th>
                 </tr>
             </thead>
             <tbody></tbody>
@@ -68,7 +74,43 @@
     </div>
 </main>
 
+<!-- Modal Điểm danh thủ công (Dành cho Giáo viên / Quản trị viên) -->
+<div class="modal" id="manualCheckModal" hidden>
+    <div class="modal-card" style="width: 480px; max-width: 95vw;">
+        <div class="modal-header">
+            <h2>Điểm danh thủ công (Giáo viên / Giáo vụ)</h2>
+            <button type="button" class="btn-close" id="btnCloseManualModal">&times;</button>
+        </div>
+        <form id="manualCheckForm">
+            <label>Lọc theo Lớp học
+                <select id="manualDeptSelect">
+                    <option value="">-- Tất cả các lớp --</option>
+                </select>
+            </label>
+            <label>Chọn Sinh viên <span class="req" style="color:red">*</span>
+                <select id="manualEmpSelect" required>
+                    <option value="">-- Đang tải danh sách sinh viên... --</option>
+                </select>
+            </label>
+            <label>Loại điểm danh <span class="req" style="color:red">*</span>
+                <select id="manualTypeSelect" required>
+                    <option value="in">Điểm danh vào lớp (Check-in)</option>
+                    <option value="out">Điểm danh ra về / Kết thúc ca (Check-out)</option>
+                </select>
+            </label>
+            <label>Ghi chú lý do
+                <input id="manualNoteInput" placeholder="VD: Quên quẹt mặt, Học bù, Camera mờ...">
+            </label>
+            <div class="modal-actions" style="margin-top: 18px;">
+                <button type="button" id="btnCancelManual" class="btn">Hủy bỏ</button>
+                <button type="submit" class="btn btn-primary" id="btnSubmitManual">Xác nhận Điểm danh</button>
+            </div>
+            <p id="manualCheckError" class="error" hidden style="margin-top: 10px;"></p>
+        </form>
+    </div>
+</div>
+
 <script src="js/api.js?v=2.2"></script>
-<script src="js/attendance.js?v=2.3"></script>
+<script src="js/attendance.js?v=2.4"></script>
 </body>
 </html>

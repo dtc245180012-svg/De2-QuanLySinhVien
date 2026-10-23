@@ -3,15 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Hệ thống Điểm danh - Sinh viên / Nhân viên</title>
+<title>Hệ thống Điểm danh - Quản lý Sinh viên</title>
 <link rel="stylesheet" href="css/style.css?v=2.5">
 </head>
 <body>
 <header class="topbar">
-    <div class="brand-sm">ĐIỂM DANH</div>
+    <div class="brand-sm">ĐIỂM DANH SINH VIÊN</div>
     <nav>
         <a href="dashboard.html">Dashboard</a>
-        <a href="employees.html" class="active">Sinh viên / Nhân viên</a>
+        <a href="employees.html" class="active">Sinh viên</a>
         <a href="departments.html">Khoa / Lớp</a>
         <a href="shifts.html">Ca / Tiết học</a>
         <a href="attendance.html">Điểm danh</a>
@@ -23,73 +23,95 @@
 </header>
 
 <main class="container">
-    <div class="page-header">
-        <h1>Quản lý nhân viên</h1>
-        <button id="btnNewEmp" class="btn btn-primary">+ Thêm nhân viên</button>
+    <div class="page-header" style="flex-wrap: wrap; gap: 12px;">
+        <div>
+            <h1 style="margin: 0 0 4px 0;">Quản lý sinh viên</h1>
+            <div class="muted">Danh sách sinh viên, đăng ký nhận diện khuôn mặt và quản lý thời khóa biểu</div>
+        </div>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button id="btnImportExcel" class="btn" style="display: inline-flex; align-items: center; gap: 6px; font-weight: 600; background: #047857; color: #fff; border-color: #047857;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                Nhập từ Excel / CSV
+            </button>
+            <button id="btnNewEmp" class="btn btn-primary">+ Thêm sinh viên</button>
+        </div>
     </div>
 
     <div class="card">
         <div class="filter-bar">
-            <input id="searchInput" placeholder="Tìm theo tên hoặc mã NV...">
-            <select id="deptFilter"><option value="">-- Phòng ban --</option></select>
+            <input id="searchInput" placeholder="Tìm theo họ tên hoặc Mã SV (MSSV)..." style="flex: 1.5; min-width: 220px;">
+            <select id="deptFilter"><option value="">-- Tất cả Lớp học / Khoa --</option></select>
             <select id="statusFilter">
-                <option value="active">Đang làm</option>
-                <option value="terminated">Đã nghỉ</option>
+                <option value="active">Đang theo học</option>
                 <option value="on_leave">Nghỉ phép</option>
+                <option value="terminated">Đã thôi học / Tốt nghiệp</option>
             </select>
             <button id="btnReload" class="btn">Tải lại</button>
         </div>
-        <table class="table" id="empTable">
-            <thead>
-                <tr>
-                    <th>Mã NV</th><th>Họ tên</th><th>Phòng ban</th><th>Chức vụ</th>
-                    <th>Ca làm việc</th><th>Trạng thái</th><th>Khuôn mặt</th><th>Hành động</th>
-                </tr>
-            </thead>
-            <tbody></tbody>
-        </table>
+        <div style="overflow-x: auto;">
+            <table class="table" id="empTable">
+                <thead>
+                    <tr>
+                        <th>Mã SV</th><th>Họ và tên</th><th>Lớp học / Khoa</th><th>Chức vụ / Khóa</th>
+                        <th>Ca học</th><th>Trạng thái</th><th>Khuôn mặt</th><th>Hành động</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
     </div>
 </main>
 
-<!-- Modal thêm/sửa nhân viên -->
+<!-- Modal thêm/sửa sinh viên -->
 <div id="empModal" class="modal" style="display: none !important;" aria-hidden="true">
     <div class="modal-card">
         <div class="modal-header">
-            <h2 id="empModalTitle">Thêm nhân viên</h2>
+            <h2 id="empModalTitle">Thêm sinh viên mới</h2>
             <button type="button" class="btn-close" id="btnCloseEmpModal" title="Đóng">&times;</button>
         </div>
         <form id="empForm" enctype="multipart/form-data">
             <input type="hidden" name="id" id="empIdInput">
-            <label>Mã NV *<input name="employee_code" id="empCodeInput" required></label>
-            <label>Họ tên *<input name="full_name" id="empNameInput" required></label>
-            <label>Email <input name="email" id="empEmailInput" type="email"></label>
-            <label>Điện thoại <input name="phone" id="empPhoneInput"></label>
-            <label>Phòng ban
+            <label>Mã sinh viên (MSSV) *
+                <input name="employee_code" id="empCodeInput" placeholder="VD: DTC245160039" required>
+            </label>
+            <label>Họ và tên sinh viên *
+                <input name="full_name" id="empNameInput" placeholder="VD: Nguyễn Văn An" required>
+            </label>
+            <label>Email sinh viên
+                <input name="email" id="empEmailInput" type="email" placeholder="VD: an.nv@ictu.edu.vn">
+            </label>
+            <label>Số điện thoại liên hệ
+                <input name="phone" id="empPhoneInput" placeholder="VD: 0981234567">
+            </label>
+            <label>Lớp học / Khoa
                 <select name="department_id" id="empDeptSelect"></select>
             </label>
-            <label>Chức vụ <input name="position" id="empPositionInput"></label>
-            <label>Ngày vào làm <input name="hire_date" id="empHireDateInput" type="date"></label>
+            <label>Chức vụ / Ban cán sự
+                <input name="position" id="empPositionInput" placeholder="VD: Sinh viên...">
+            </label>
+            <label>Ngày nhập học / Khóa học
+                <input name="hire_date" id="empHireDateInput" type="date">
+            </label>
             
             <div style="border: 1px solid #e5e7eb; padding: 14px; border-radius: 8px; margin: 14px 0; background: #f9fafb;">
-                <label style="font-weight: 700; color: #1f2937; margin: 0 0 8px 0; font-size: 0.95em;">Ca làm việc</label>
-                <label>Chọn ca làm việc
+                <label style="font-weight: 700; color: #1f2937; margin: 0 0 8px 0; font-size: 0.95em;">Thời khóa biểu / Ca học</label>
+                <label>Chọn ca học
                     <select id="empShiftSelect" name="shift_name">
-                        <option value="Ca ngày (08:30 - 17:30)">Ca ngày (08:30 - 17:30)</option>
-                        <option value="Ca sáng (06:00 - 14:00)">Ca sáng (06:00 - 14:00)</option>
-                        <option value="Ca chiều (14:00 - 22:00)">Ca chiều (14:00 - 22:00)</option>
-                        <option value="Ca đêm (20:00 - 05:00)">Ca đêm (20:00 - 05:00)</option>
+                        <option value="Ca sáng (Tiết 1 - 4: 07:00 - 10:30)">Ca sáng (Tiết 1 - 4: 07:00 - 10:30)</option>
+                        <option value="Ca chiều (Tiết 7 - 10: 13:00 - 16:30)">Ca chiều (Tiết 7 - 10: 13:00 - 16:30)</option>
+                        <option value="Ca tối (Tiết 11 - 13: 18:00 - 20:30)">Ca tối (Tiết 11 - 13: 18:00 - 20:30)</option>
                     </select>
                 </label>
-                <input name="work_start" id="empWorkStart" type="hidden" value="08:30">
-                <input name="work_end" id="empWorkEnd" type="hidden" value="17:30">
+                <input name="work_start" id="empWorkStart" type="hidden" value="07:00">
+                <input name="work_end" id="empWorkEnd" type="hidden" value="10:30">
             </div>
 
             <div id="empStatusGroup" style="display: none;">
-                <label>Trạng thái
+                <label>Trạng thái học tập
                     <select name="status" id="empStatusSelect">
-                        <option value="active">Đang làm việc</option>
+                        <option value="active">Đang theo học</option>
                         <option value="on_leave">Nghỉ phép</option>
-                        <option value="terminated">Đã nghỉ việc</option>
+                        <option value="terminated">Đã thôi học / Tốt nghiệp</option>
                     </select>
                 </label>
                 <div id="empLeaveDatesGroup" style="display: none; border: 1px solid #fed7aa; background: #fffbeb; padding: 10px; border-radius: 6px; margin-top: 8px;">
@@ -99,16 +121,16 @@
                     <label>Đến hết ngày
                         <input name="leave_end" id="empLeaveEndInput" type="date">
                     </label>
-                    <small class="muted" style="color: #92400e;">Hết ngày nghỉ phép sẽ tự động chuyển về Đang làm việc.</small>
+                    <small class="muted" style="color: #92400e;">Hết thời gian nghỉ phép, sinh viên sẽ tự động chuyển về trạng thái Đang theo học.</small>
                 </div>
             </div>
 
-            <label>Ảnh khuôn mặt (để đăng ký nhận diện)
+            <label>Ảnh thẻ chân dung (đăng ký nhận diện khuôn mặt)
                 <input name="file" id="empFileInput" type="file" accept="image/*">
             </label>
             <div class="modal-actions">
                 <button type="button" id="btnCancel" class="btn">Hủy</button>
-                <button type="submit" class="btn btn-primary">Lưu</button>
+                <button type="submit" class="btn btn-primary">Lưu hồ sơ sinh viên</button>
             </div>
             <p id="empFormError" class="error" hidden></p>
         </form>
@@ -119,7 +141,7 @@
 <div class="modal" id="leaveModal" hidden>
     <div class="modal-card" style="width: 440px;">
         <div class="modal-header">
-            <h2 id="leaveModalTitle">Đăng ký thời gian nghỉ phép</h2>
+            <h2 id="leaveModalTitle">Đăng ký nghỉ phép cho sinh viên</h2>
             <button type="button" class="btn-close" id="btnCloseLeaveModal">&times;</button>
         </div>
         <form id="leaveForm">
@@ -132,7 +154,7 @@
                 <input type="date" id="leaveEndDate" required>
             </label>
             <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:10px 12px;margin:12px 0;font-size:0.88em;color:#1e40af;line-height:1.4;">
-                💡 <strong>Tự động kích hoạt:</strong> Sau khi hết ngày nghỉ phép đã chọn, hệ thống sẽ <strong>tự động chuyển nhân viên về danh sách Đang làm việc</strong>.
+                💡 <strong>Tự động kích hoạt:</strong> Sau khi hết ngày nghỉ phép đã chọn, hệ thống sẽ <strong>tự động đưa sinh viên trở lại danh sách điểm danh bình thường</strong>.
             </div>
             <div class="modal-actions" style="margin-top: 16px;">
                 <button type="button" id="btnCancelLeave" class="btn">Hủy</button>
@@ -143,6 +165,43 @@
     </div>
 </div>
 
+<!-- Modal Nhập sinh viên từ file Excel / CSV -->
+<div class="modal" id="importExcelModal" hidden>
+    <div class="modal-card" style="width: 520px;">
+        <div class="modal-header">
+            <h2>Nhập danh sách sinh viên từ Excel / CSV</h2>
+            <button type="button" class="btn-close" id="btnCloseImportModal">&times;</button>
+        </div>
+        <div style="padding: 16px 0;">
+            <p style="margin: 0 0 12px 0; font-size: 0.95em; color: #4b5563;">
+                Chọn tệp Excel (<code>.xlsx</code>, <code>.xls</code>) hoặc <code>.csv</code> chứa danh sách sinh viên lớp của bạn.
+            </p>
+            <div style="border: 2px dashed #93c5fd; background: #eff6ff; border-radius: 8px; padding: 24px; text-align: center;">
+                <input type="file" id="excelFileInput" accept=".xlsx, .xls, .csv" style="display: none;">
+                <button type="button" class="btn btn-primary" onclick="document.getElementById('excelFileInput').click()">
+                    📁 Chọn file Excel / CSV từ máy tính
+                </button>
+                <div id="selectedFileName" class="muted" style="margin-top: 10px; font-weight: 600;">Chưa chọn tệp</div>
+            </div>
+            <div id="importPreview" style="margin-top: 14px; max-height: 200px; overflow-y: auto; display: none;">
+                <table class="table" id="previewTable" style="font-size: 0.85em;">
+                    <thead><tr><th>Mã SV</th><th>Họ tên</th><th>Lớp</th><th>Email</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <div id="importProgress" style="margin-top: 12px; display: none; color: #047857; font-weight: 600;">
+                ⏳ Đang nhập dữ liệu sinh viên vào hệ thống...
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button type="button" id="btnCancelImport" class="btn">Đóng</button>
+            <button type="button" id="btnExecuteImport" class="btn btn-primary" disabled>Bắt đầu nhập dữ liệu</button>
+        </div>
+    </div>
+</div>
+
+<!-- Thư viện SheetJS đọc trực tiếp tệp Excel .xlsx/.xls trong trình duyệt (Offline & Local) -->
+<script src="js/xlsx.full.min.js"></script>
 <script src="js/api.js?v=2.6"></script>
 <script src="js/employees.js?v=2.6"></script>
 </body>

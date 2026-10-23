@@ -45,7 +45,7 @@ async function create(req, res) {
         return res.status(201).json({ ok: true, data: fetchR.rows[0] });
     } catch (err) {
         if (err.code === 'ER_DUP_ENTRY' || err.message.includes('Duplicate entry')) {
-            return res.status(409).json({ ok: false, error: 'Tên phòng ban / khoa đã tồn tại' });
+            return res.status(409).json({ ok: false, error: 'Tên Lớp học / Khoa đã tồn tại' });
         }
         logger.error('create dept', { err: err.message });
         return res.status(500).json({ ok: false, error: 'Failed to create department' });

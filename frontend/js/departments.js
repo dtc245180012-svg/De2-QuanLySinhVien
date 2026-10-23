@@ -31,12 +31,12 @@
         form.reset();
         if (errEl) errEl.hidden = true;
         if (isEdit && dept) {
-            modalTitle.textContent = 'Sửa phòng ban: ' + dept.name;
+            modalTitle.textContent = 'Sửa Lớp học / Khoa: ' + dept.name;
             idInput.value = dept.id;
             nameInput.value = dept.name;
             descInput.value = dept.description || '';
         } else {
-            modalTitle.textContent = 'Thêm phòng ban';
+            modalTitle.textContent = 'Thêm Lớp học / Khoa';
             idInput.value = '';
         }
         modal.style.setProperty('display', 'flex', 'important');
@@ -104,7 +104,7 @@
                     btnDel.className = 'btn btn-sm btn-danger';
                     btnDel.textContent = 'Xoá';
                     btnDel.onclick = async () => {
-                        if (!confirm(`Bạn có chắc muốn xoá phòng ban "${d.name}"?`)) return;
+                        if (!confirm(`Bạn có chắc muốn xoá Lớp học / Khoa "${d.name}"?`)) return;
                         try {
                             await API.del('/departments/' + d.id);
                             load();
@@ -117,10 +117,10 @@
                 tbody.appendChild(tr);
             }
             if (r.data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" class="muted" style="text-align:center;padding:16px;">Chưa có phòng ban nào.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="4" class="muted" style="text-align:center;padding:16px;">Chưa có Lớp học / Khoa nào.</td></tr>';
             }
         } catch (err) {
-            tbody.innerHTML = `<tr><td colspan="4" class="error" style="text-align:center;padding:16px;">Không thể tải danh sách phòng ban: ${err.message}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="4" class="error" style="text-align:center;padding:16px;">Không thể tải danh sách Lớp học / Khoa: ${err.message}</td></tr>`;
         }
     }
 

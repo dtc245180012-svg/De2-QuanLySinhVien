@@ -8,11 +8,11 @@
 </head>
 <body>
 <header class="topbar">
-    <div class="brand-sm">ĐIỂM DANH</div>
+    <div class="brand-sm">ĐIỂM DANH SINH VIÊN</div>
     <nav>
         <a href="dashboard.html" class="active">Dashboard</a>
-        <a href="employees.html">Sinh viên / Nhân viên</a>
-        <a href="departments.html">Khoa / Lớp</a>
+        <a href="employees.html">Sinh viên</a>
+        <a href="departments.html">Lớp học / Khoa</a>
         <a href="shifts.html">Ca / Tiết học</a>
         <a href="attendance.html">Điểm danh</a>
     </nav>
@@ -25,7 +25,7 @@
 <main class="container">
     <div class="page-header" style="margin-bottom: 16px;">
         <div>
-            <h1 style="margin: 0 0 4px 0;">Tổng quan & Thống kê chấm công</h1>
+            <h1 style="margin: 0 0 4px 0;">Tổng quan & Thống kê điểm danh sinh viên</h1>
             <p class="muted" id="todayLabel" style="margin: 0;">Đang tải...</p>
         </div>
     </div>
@@ -33,7 +33,7 @@
     <!-- Bộ lọc theo tiêu chí -->
     <div class="card" style="margin-bottom: 20px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
-            <h3 style="margin: 0; font-size: 1.05em; color: #1f2937;">Bộ lọc thống kê & chấm công</h3>
+            <h3 style="margin: 0; font-size: 1.05em; color: #1f2937;">Bộ lọc thống kê & điểm danh</h3>
             <div style="display: flex; gap: 6px; flex-wrap: wrap;">
                 <button type="button" class="btn btn-sm" id="btnPresetToday">Hôm nay</button>
                 <button type="button" class="btn btn-sm" id="btnPreset7Days">7 ngày qua</button>
@@ -47,8 +47,8 @@
             <label style="display: flex; flex-direction: column; font-size: 0.85em; color: #4b5563;">Đến ngày
                 <input type="date" id="dashToDate">
             </label>
-            <label style="display: flex; flex-direction: column; font-size: 0.85em; color: #4b5563;">Phòng ban
-                <select id="dashDeptSelect"><option value="">-- Tất cả phòng ban --</option></select>
+            <label style="display: flex; flex-direction: column; font-size: 0.85em; color: #4b5563;">Lớp học / Khoa
+                <select id="dashDeptSelect"><option value="">-- Tất cả Lớp / Khoa --</option></select>
             </label>
             <label style="display: flex; flex-direction: column; font-size: 0.85em; color: #4b5563;">Trạng thái
                 <select id="dashStatusSelect">
@@ -59,8 +59,8 @@
                     <option value="absent">Vắng mặt (absent)</option>
                 </select>
             </label>
-            <label style="display: flex; flex-direction: column; font-size: 0.85em; color: #4b5563; flex: 1; min-width: 160px;">Tìm nhân viên
-                <input type="text" id="dashSearchInput" placeholder="Mã hoặc họ tên NV...">
+            <label style="display: flex; flex-direction: column; font-size: 0.85em; color: #4b5563; flex: 1; min-width: 160px;">Tìm sinh viên
+                <input type="text" id="dashSearchInput" placeholder="Mã SV (MSSV) hoặc họ tên...">
             </label>
             <div style="display: flex; gap: 6px;">
                 <button id="btnApplyFilter" class="btn btn-primary">Lọc</button>
@@ -71,8 +71,8 @@
 
     <!-- Thống kê tổng quan (Bấm vào thẻ để lọc danh sách tương ứng bên dưới) -->
     <div class="grid grid-stats">
-        <div class="card stat stat-clickable" id="cardStatActive" data-status="" title="Bấm để xem tất cả nhân viên / chấm công">
-            <div class="stat-label">Nhân viên (Active)</div>
+        <div class="card stat stat-clickable" id="cardStatActive" data-status="" title="Bấm để xem tất cả sinh viên / điểm danh">
+            <div class="stat-label">Sinh viên (Đang học)</div>
             <div class="stat-value" id="statActive">-</div>
         </div>
         <div class="card stat stat-green stat-clickable" id="cardStatOnTime" data-status="on_time" title="Bấm để lọc danh sách đúng giờ">
@@ -93,24 +93,30 @@
         </div>
     </div>
 
-    <!-- Danh sách chi tiết chấm công theo bộ lọc -->
+    <!-- Danh sách chi tiết điểm danh theo bộ lọc -->
     <div class="card">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
             <div>
-                <h2 id="recentTableTitle" style="margin: 0; font-size: 1.2em;">Chi tiết hoạt động chấm công</h2>
-                <div class="muted" style="font-size: 0.85em;" id="selectedDateSub">Danh sách chấm công theo điều kiện lọc</div>
+                <h2 id="recentTableTitle" style="margin: 0; font-size: 1.2em;">Chi tiết hoạt động điểm danh sinh viên</h2>
+                <div class="muted" style="font-size: 0.85em;" id="selectedDateSub">Danh sách điểm danh theo điều kiện lọc</div>
             </div>
-            <span class="badge badge-active" id="recentTableCount">0 bản ghi</span>
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <button type="button" class="btn btn-sm" id="btnExportCSV" style="display: inline-flex; align-items: center; gap: 4px; font-weight: 600;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                    Xuất CSV
+                </button>
+                <span class="badge badge-active" id="recentTableCount">0 bản ghi</span>
+            </div>
         </div>
         <div style="overflow-x: auto;">
             <table class="table" id="recentTable">
                 <thead>
                     <tr>
                         <th>Ngày</th>
-                        <th>Mã NV</th>
-                        <th>Họ tên</th>
-                        <th>Phòng ban</th>
-                        <th>Ca làm việc</th>
+                        <th>MSSV</th>
+                        <th>Họ tên sinh viên</th>
+                        <th>Lớp học / Khoa</th>
+                        <th>Ca / Tiết học</th>
                         <th>Giờ vào</th>
                         <th>Giờ ra</th>
                         <th>Trạng thái</th>

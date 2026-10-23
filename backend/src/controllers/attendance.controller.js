@@ -80,7 +80,7 @@ async function faceCheck(req, res) {
         );
 
         if (allEmps.rowCount === 0) {
-            return res.status(404).json({ ok: false, error: 'NO_ENROLLED_EMPLOYEE', message: 'Chưa có sinh viên/nhân viên nào đăng ký khuôn mặt trong hệ thống' });
+            return res.status(404).json({ ok: false, error: 'NO_ENROLLED_EMPLOYEE', message: 'Chưa có sinh viên nào đăng ký khuôn mặt trong hệ thống' });
         }
 
         let bestEmp = null;
@@ -223,7 +223,7 @@ async function manualCheck(req, res) {
         );
         if (type === 'in') {
             if (existing.rowCount > 0 && existing.rows[0].check_in) {
-                return res.status(409).json({ ok: false, error: 'Hôm nay sinh viên/nhân viên đã điểm danh vào rồi' });
+                return res.status(409).json({ ok: false, error: 'Hôm nay sinh viên đã điểm danh vào rồi' });
             }
             const status = statusForCheckIn(localNow, localDate, empStart);
             if (existing.rowCount === 0) {
@@ -303,7 +303,7 @@ async function list(req, res) {
         return res.json({ ok: true, data: r.rows });
     } catch (err) {
         logger.error('list attendance', { err: err.message });
-        return res.status(500).json({ ok: false, error: 'Lỗi tải danh sách chấm công' });
+        return res.status(500).json({ ok: false, error: 'Lỗi tải danh sách điểm danh' });
     }
 }
 
@@ -346,7 +346,7 @@ async function myHistory(req, res) {
         return res.json({ ok: true, data: r.rows, is_all: false });
     } catch (err) {
         logger.error('my history', { err: err.message });
-        return res.status(500).json({ ok: false, error: 'Lỗi tải lịch sử chấm công' });
+        return res.status(500).json({ ok: false, error: 'Lỗi tải lịch sử điểm danh' });
     }
 }
 

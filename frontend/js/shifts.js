@@ -1,4 +1,4 @@
-// js/shifts.js - Quản lý ca làm việc của nhân viên
+// js/shifts.js - Quản lý ca học / thời khóa biểu sinh viên
 (async () => {
     if (!API.requireAuth()) return;
 
@@ -6,7 +6,7 @@
         const me = await API.me();
         document.getElementById('meName').textContent = me.data.full_name || me.data.username;
         if (me.data.role === 'employee') {
-            alert('Bạn không có quyền truy cập trang quản lý ca làm việc.');
+            alert('Bạn không có quyền truy cập trang quản lý ca học.');
             location.href = 'attendance.html';
             return;
         }
@@ -75,12 +75,11 @@
     const btnCancelCreateShift = document.getElementById('btnCancelCreateShift');
     const btnSaveNewShift    = document.getElementById('btnSaveNewShift');
 
-    // Dynamic shift presets map
+    // Dynamic shift presets map (chuẩn hóa theo ca học sinh viên)
     let shiftPresets = {
-        'Ca ngày (08:30 - 17:30)': { start: '08:30', end: '17:30' },
-        'Ca sáng (06:00 - 14:00)': { start: '06:00', end: '14:00' },
-        'Ca chiều (14:00 - 22:00)': { start: '14:00', end: '22:00' },
-        'Ca đêm (20:00 - 05:00)': { start: '20:00', end: '05:00' },
+        'Ca sáng (Tiết 1 - 4: 07:00 - 10:30)': { start: '07:00', end: '10:30' },
+        'Ca chiều (Tiết 7 - 10: 13:00 - 16:30)': { start: '13:00', end: '16:30' },
+        'Ca tối (Tiết 11 - 13: 18:00 - 20:30)': { start: '18:00', end: '20:30' },
     };
 
     // State
@@ -91,12 +90,12 @@
     let currentMode = 'bulk'; // 'single' or 'bulk'
     let singleTargetEmp = null;
 
-    // Helper: format shift badge (no emojis)
+    // Helper: format shift badge
     function getShiftBadge(shiftName) {
         if (!shiftName) return '<span class="badge badge-shift-custom">Chưa gán</span>';
         const s = shiftName.toLowerCase();
         let cls = 'badge-shift';
-        if (s.includes('đêm')) cls = 'badge-shift-night';
+        if (s.includes('tối') || s.includes('đêm')) cls = 'badge-shift-night';
         else if (s.includes('sáng')) cls = 'badge-shift-morning';
         else if (s.includes('chiều')) cls = 'badge-shift-afternoon';
         else if (s.includes('ngày')) cls = 'badge-shift-day';
@@ -104,8 +103,8 @@
     }
 
     function getStatusBadge(status) {
-        if (status === 'active') return '<span class="badge badge-active">Đang làm việc</span>';
-        if (status === 'terminated') return '<span class="badge badge-terminated">Đã nghỉ việc</span>';
+        if (status === 'active') return '<span class="badge badge-active">Đang theo học</span>';
+        if (status === 'terminated') return '<span class="badge badge-terminated">Đã thôi học / Tốt nghiệp</span>';
         if (status === 'on_leave') return '<span class="badge badge-late">Nghỉ phép</span>';
         return `<span class="badge">${escapeHtml(status || 'N/A')}</span>`;
     }
@@ -138,7 +137,7 @@
         }).join('') + '<option value="__inline_create__">+ Tự tạo ca mới...</option>';
 
         // Populate shiftFilter
-        shiftFilter.innerHTML = '<option value="">-- Tất cả ca làm việc --</option>' +
+        shiftFilter.innerHTML = '<option value="">-- Tất cả ca / tiết học --</option>' +
             Object.keys(shiftPresets).map(name => {
                 return `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`;
             }).join('');
@@ -162,26 +161,26 @@
             startTimeInput.value = shiftPresets[presetName].start;
             endTimeInput.value   = shiftPresets[presetName].end;
         } else {
-            startTimeInput.value = '08:30';
-            endTimeInput.value   = '17:30';
+            startTimeInput.value = '07:00';
+            endTimeInput.value   = '10:30';
         }
     }
 
     function openSingleModal(emp) {
         currentMode = 'single';
         singleTargetEmp = emp;
-        shiftModalTitle.textContent = `Đổi ca làm: ${emp.full_name} (${emp.employee_code})`;
-        targetSummary.innerHTML = `Đang cập nhật ca cho: <strong>${escapeHtml(emp.full_name)}</strong> (Mã: <code>${escapeHtml(emp.employee_code)}</code>) - Phòng: <em>${escapeHtml(emp.department_name || 'N/A')}</em>`;
+        shiftModalTitle.textContent = `Đổi ca học: ${emp.full_name} (${emp.employee_code})`;
+        targetSummary.innerHTML = `Đang cập nhật ca học cho: <strong>${escapeHtml(emp.full_name)}</strong> (MSSV: <code>${escapeHtml(emp.employee_code)}</code>) - Lớp: <em>${escapeHtml(emp.department_name || 'N/A')}</em>`;
         shiftModalError.hidden = true;
         toggleInlineCreateShift(false);
 
         let matched = emp.shift_name;
         if (!shiftPresets[matched]) {
-            const sStart = (emp.work_start || '08:30').slice(0, 5);
-            const sEnd   = (emp.work_end || '17:30').slice(0, 5);
+            const sStart = (emp.work_start || '07:00').slice(0, 5);
+            const sEnd   = (emp.work_end || '10:30').slice(0, 5);
             matched = Object.keys(shiftPresets).find(k => 
                 shiftPresets[k].start === sStart && shiftPresets[k].end === sEnd
-            ) || Object.keys(shiftPresets)[0] || 'Ca ngày (08:30 - 17:30)';
+            ) || Object.keys(shiftPresets)[0] || 'Ca sáng (Tiết 1 - 4: 07:00 - 10:30)';
         }
 
         presetSelect.value = matched;
@@ -194,12 +193,12 @@
 
     function openBulkModal() {
         if (selectedEmpIds.size === 0) {
-            alert('Vui lòng chọn ít nhất một nhân viên để đổi ca làm việc.');
+            alert('Vui lòng chọn ít nhất một sinh viên để đổi ca học.');
             return;
         }
         currentMode = 'bulk';
         singleTargetEmp = null;
-        shiftModalTitle.textContent = `Đổi ca hàng loạt cho ${selectedEmpIds.size} nhân viên`;
+        shiftModalTitle.textContent = `Đổi ca học hàng loạt cho ${selectedEmpIds.size} sinh viên`;
         toggleInlineCreateShift(false);
         
         const selectedNames = allEmployees
@@ -207,12 +206,12 @@
             .map(e => `${escapeHtml(e.full_name)} (${escapeHtml(e.employee_code)})`)
             .slice(0, 5);
         const moreCount = selectedEmpIds.size - selectedNames.length;
-        const namesStr = selectedNames.join(', ') + (moreCount > 0 ? ` và ${moreCount} nhân viên khác...` : '');
+        const namesStr = selectedNames.join(', ') + (moreCount > 0 ? ` và ${moreCount} sinh viên khác...` : '');
 
-        targetSummary.innerHTML = `Áp dụng cho <strong>${selectedEmpIds.size} nhân viên đã chọn</strong>:<br><span class="muted" style="font-size: 0.9em;">${namesStr}</span>`;
+        targetSummary.innerHTML = `Áp dụng cho <strong>${selectedEmpIds.size} sinh viên đã chọn</strong>:<br><span class="muted" style="font-size: 0.9em;">${namesStr}</span>`;
         shiftModalError.hidden = true;
 
-        const defaultShift = Object.keys(shiftPresets)[0] || 'Ca ngày (08:30 - 17:30)';
+        const defaultShift = Object.keys(shiftPresets)[0] || 'Ca sáng (Tiết 1 - 4: 07:00 - 10:30)';
         presetSelect.value = defaultShift;
         applyPresetTimes(defaultShift);
 
@@ -279,13 +278,13 @@
             const work_end = inlineShiftEnd.value;
 
             if (!name) {
-                inlineShiftError.textContent = 'Vui lòng nhập tên ca làm việc.';
+                inlineShiftError.textContent = 'Vui lòng nhập tên ca / tiết học.';
                 inlineShiftError.hidden = false;
                 inlineShiftName.focus();
                 return;
             }
             if (!work_start || !work_end) {
-                inlineShiftError.textContent = 'Vui lòng chọn giờ vào ca và giờ tan ca.';
+                inlineShiftError.textContent = 'Vui lòng chọn giờ bắt đầu và giờ kết thúc.';
                 inlineShiftError.hidden = false;
                 return;
             }
@@ -303,8 +302,8 @@
                 presetSelect.value = created.name;
                 applyPresetTimes(created.name);
             } catch (err) {
-                console.error('Lỗi tạo ca làm', err);
-                inlineShiftError.textContent = err.message || 'Lỗi khi lưu ca làm việc';
+                console.error('Lỗi tạo ca học', err);
+                inlineShiftError.textContent = err.message || 'Lỗi khi lưu ca học';
                 inlineShiftError.hidden = false;
             } finally {
                 btnSaveInlineShift.disabled = false;
@@ -368,14 +367,14 @@
                 presetSelect.value = created.name;
                 applyPresetTimes(created.name);
             }
-            alert(`Đã thêm ca làm việc "${created.name}" thành công!`);
+            alert(`Đã thêm ca / tiết học "${created.name}" thành công!`);
         } catch (err) {
             console.error('Tạo ca thất bại', err);
-            createShiftError.textContent = err.message || 'Lỗi khi tạo ca làm việc';
+            createShiftError.textContent = err.message || 'Lỗi khi tạo ca / tiết học';
             createShiftError.hidden = false;
         } finally {
             btnSaveNewShift.disabled = false;
-            btnSaveNewShift.textContent = 'Lưu vào danh sách ca';
+            btnSaveNewShift.textContent = 'Lưu vào thời khóa biểu';
         }
     });
 
@@ -414,11 +413,11 @@
             await loadEmployees();
         } catch (err) {
             console.error('Save shift error', err);
-            shiftModalError.textContent = err.message || 'Lỗi khi lưu ca làm việc';
+            shiftModalError.textContent = err.message || 'Lỗi khi lưu ca học';
             shiftModalError.hidden = false;
         } finally {
             btnSaveShift.disabled = false;
-            btnSaveShift.textContent = 'Lưu ca làm';
+            btnSaveShift.textContent = 'Lưu ca học';
         }
     });
 
@@ -476,7 +475,7 @@
         try {
             const r = await API.get('/departments');
             allDepartments = r.data || [];
-            deptFilter.innerHTML = '<option value="">-- Tất cả phòng ban --</option>' +
+            deptFilter.innerHTML = '<option value="">-- Tất cả Lớp / Khoa --</option>' +
                 allDepartments.map(d => `<option value="${d.id}">${escapeHtml(d.name)}</option>`).join('');
         } catch (err) {
             console.error('Failed to load departments', err);
@@ -485,7 +484,7 @@
 
     // Load employees and calculate stats
     async function loadEmployees() {
-        tbody.innerHTML = '<tr><td colspan="8" class="muted text-center" style="padding: 24px;">Đang tải danh sách nhân viên...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" class="muted text-center" style="padding: 24px;">Đang tải danh sách sinh viên...</td></tr>';
         try {
             const params = new URLSearchParams();
             if (deptFilter.value) params.set('department_id', deptFilter.value);
@@ -503,24 +502,24 @@
                 displayList = allEmployees.filter(e => (e.shift_name || '').toLowerCase().includes(shiftVal.toLowerCase()));
             }
 
-            // Cập nhật thống kê
-            let countDay = 0, countMorning = 0, countAfternoon = 0, countNight = 0;
+            // Cập nhật thống kê ca học
+            let countMorning = 0, countAfternoon = 0, countEvening = 0, countOther = 0;
             allEmployees.forEach(e => {
                 const s = (e.shift_name || '').toLowerCase();
-                if (s.includes('đêm')) countNight++;
-                else if (s.includes('sáng')) countMorning++;
+                if (s.includes('sáng')) countMorning++;
                 else if (s.includes('chiều')) countAfternoon++;
-                else countDay++;
+                else if (s.includes('tối')) countEvening++;
+                else countOther++;
             });
 
             statTotal.textContent     = allEmployees.length;
-            statDay.textContent       = countDay;
-            statMorning.textContent   = countMorning;
-            statAfternoon.textContent = countAfternoon;
-            statNight.textContent     = countNight;
+            statDay.textContent       = countMorning;
+            statMorning.textContent   = countAfternoon;
+            statAfternoon.textContent = countEvening;
+            statNight.textContent     = countOther;
 
             if (displayList.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" class="muted text-center" style="padding: 30px;">Không tìm thấy nhân viên nào phù hợp với điều kiện lọc.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" class="muted text-center" style="padding: 30px;">Không tìm thấy sinh viên nào phù hợp với điều kiện lọc.</td></tr>';
                 updateBulkBar();
                 return;
             }

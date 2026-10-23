@@ -1,4 +1,4 @@
-// js/employees.js
+// js/employees.js - Quản lý sinh viên & Nhập liệu Excel/CSV
 (async () => {
     if (!API.requireAuth()) return;
 
@@ -47,12 +47,26 @@
     const btnCloseLeave  = document.getElementById('btnCloseLeaveModal');
     const leaveFormError = document.getElementById('leaveFormError');
 
-    // Shift presets
+    // Excel Import elements
+    const btnImportExcel      = document.getElementById('btnImportExcel');
+    const importExcelModal    = document.getElementById('importExcelModal');
+    const btnCloseImportModal = document.getElementById('btnCloseImportModal');
+    const btnCancelImport     = document.getElementById('btnCancelImport');
+    const excelFileInput      = document.getElementById('excelFileInput');
+    const selectedFileName    = document.getElementById('selectedFileName');
+    const importPreview       = document.getElementById('importPreview');
+    const previewTableBody    = document.querySelector('#previewTable tbody');
+    const importProgress      = document.getElementById('importProgress');
+    const btnExecuteImport    = document.getElementById('btnExecuteImport');
+
+    let parsedStudents = [];
+    let departmentList = [];
+
+    // Shift presets dành cho trường học
     let SHIFT_TIMES = {
-        'Ca ngày (08:30 - 17:30)': { start: '08:30', end: '17:30' },
-        'Ca sáng (06:00 - 14:00)': { start: '06:00', end: '14:00' },
-        'Ca chiều (14:00 - 22:00)': { start: '14:00', end: '22:00' },
-        'Ca đêm (20:00 - 05:00)': { start: '20:00', end: '05:00' },
+        'Ca sáng (Tiết 1 - 4: 07:00 - 10:30)': { start: '07:00', end: '10:30' },
+        'Ca chiều (Tiết 7 - 10: 13:00 - 16:30)': { start: '13:00', end: '16:30' },
+        'Ca tối (Tiết 11 - 13: 18:00 - 20:30)': { start: '18:00', end: '20:30' },
     };
 
     async function loadEmpShifts() {
@@ -67,7 +81,7 @@
                 }
             }
         } catch (e) {
-            console.warn('Fallback to default shifts', e);
+            console.warn('Fallback to default student shifts', e);
         }
     }
 
@@ -76,8 +90,8 @@
             workStartInput.value = SHIFT_TIMES[val].start;
             workEndInput.value   = SHIFT_TIMES[val].end;
         } else {
-            workStartInput.value = '08:30';
-            workEndInput.value   = '17:30';
+            workStartInput.value = '07:00';
+            workEndInput.value   = '10:30';
         }
     }
 
@@ -93,7 +107,6 @@
         });
     }
 
-    // Ensure modal starts hidden immediately
     function closeModal() {
         modal.classList.remove('open');
         modal.style.setProperty('display', 'none', 'important');
@@ -116,7 +129,7 @@
         leaveForm.reset();
         if (leaveFormError) leaveFormError.hidden = true;
         leaveEmpId.value = emp.id;
-        leaveEmpName.textContent = `${emp.full_name} (${emp.employee_code}) - ${emp.department_name || 'Chưa phân phòng'}`;
+        leaveEmpName.textContent = `${emp.full_name} (${emp.employee_code}) - ${emp.department_name || 'Chưa phân lớp'}`;
         const today = new Date().toISOString().slice(0, 10);
         leaveStartDate.value = emp.leave_start ? emp.leave_start.slice(0, 10) : today;
         leaveEndDate.value   = emp.leave_end   ? emp.leave_end.slice(0, 10)   : today;
@@ -187,11 +200,11 @@
             hireDateInput.value = emp.hire_date ? emp.hire_date.slice(0, 10) : '';
             let matched = emp.shift_name;
             if (!SHIFT_TIMES[matched]) {
-                const sStart = (emp.work_start || '08:30').slice(0, 5);
-                const sEnd   = (emp.work_end || '17:30').slice(0, 5);
+                const sStart = (emp.work_start || '07:00').slice(0, 5);
+                const sEnd   = (emp.work_end || '10:30').slice(0, 5);
                 matched = Object.keys(SHIFT_TIMES).find(k => 
                     SHIFT_TIMES[k].start === sStart && SHIFT_TIMES[k].end === sEnd
-                ) || 'Ca ngày (08:30 - 17:30)';
+                ) || Object.keys(SHIFT_TIMES)[0];
             }
             shiftSelect.value = matched;
             applyEmpShiftTimes(matched);
@@ -203,99 +216,196 @@
                 leaveEndInput.value   = emp.leave_end   ? emp.leave_end.slice(0, 10)   : '';
             }
         } else {
-            modalTitle.textContent = 'Thêm nhân viên';
+            modalTitle.textContent = 'Thêm sinh viên mới';
             idInput.value = '';
             codeInput.readOnly = false;
-            shiftSelect.value = 'Ca ngày (08:30 - 17:30)';
-            applyEmpShiftTimes('Ca ngày (08:30 - 17:30)');
             statusGroup.style.display = 'none';
             if (leaveDatesGroup) leaveDatesGroup.style.display = 'none';
+            const defaultShiftName = Object.keys(SHIFT_TIMES)[0] || 'Ca sáng (Tiết 1 - 4: 07:00 - 10:30)';
+            shiftSelect.value = defaultShiftName;
+            applyEmpShiftTimes(defaultShiftName);
         }
 
         modal.style.setProperty('display', 'flex', 'important');
         modal.hidden = false;
-        modal.removeAttribute('aria-hidden');
+        modal.setAttribute('aria-hidden', 'false');
         modal.classList.add('open');
-        if (!isEdit) codeInput.focus();
     }
 
-    // Call closeModal immediately
-    closeModal();
-
-    // Modal listeners
-    const btnCancel = document.getElementById('btnCancel');
-    if (btnCancel) {
-        btnCancel.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            closeModal();
-        });
-    }
-
-    const btnClose = document.getElementById('btnCloseEmpModal');
-    if (btnClose) {
-        btnClose.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            closeModal();
-        });
-    }
-
+    document.getElementById('btnNewEmp').addEventListener('click', () => openModal(false));
+    document.getElementById('btnCloseEmpModal').addEventListener('click', (e) => { e.preventDefault(); closeModal(); });
+    document.getElementById('btnCancel').addEventListener('click', (e) => { e.preventDefault(); closeModal(); });
     modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
-    window.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
 
-    const btnNewEmp = document.getElementById('btnNewEmp');
-    if (user && user.role === 'employee' && btnNewEmp) {
-        btnNewEmp.style.display = 'none';
-    } else if (btnNewEmp) {
-        btnNewEmp.addEventListener('click', () => {
-            if (!user || user.role === 'employee') return alert('Bạn không có quyền thực hiện thao tác này');
-            openModal(false);
+    // ----------------------------------------------------
+    // Xử lý Import từ Excel / CSV
+    // ----------------------------------------------------
+    function openImportModal() {
+        if (!importExcelModal) return;
+        parsedStudents = [];
+        excelFileInput.value = '';
+        selectedFileName.textContent = 'Chưa chọn tệp';
+        importPreview.style.display = 'none';
+        importProgress.style.display = 'none';
+        btnExecuteImport.disabled = true;
+        previewTableBody.innerHTML = '';
+        importExcelModal.style.setProperty('display', 'flex', 'important');
+        importExcelModal.hidden = false;
+        importExcelModal.classList.add('open');
+    }
+
+    function closeImportModal() {
+        if (!importExcelModal) return;
+        importExcelModal.classList.remove('open');
+        importExcelModal.style.setProperty('display', 'none', 'important');
+        importExcelModal.hidden = true;
+    }
+
+    if (btnImportExcel) btnImportExcel.addEventListener('click', openImportModal);
+    if (btnCloseImportModal) btnCloseImportModal.addEventListener('click', closeImportModal);
+    if (btnCancelImport) btnCancelImport.addEventListener('click', closeImportModal);
+    if (importExcelModal) importExcelModal.addEventListener('click', (e) => { if (e.target === importExcelModal) closeImportModal(); });
+
+    if (excelFileInput) {
+        excelFileInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            selectedFileName.textContent = `📄 Đã chọn: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                const rawJson = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+
+                if (!rawJson || rawJson.length === 0) {
+                    alert('Tệp Excel không chứa dữ liệu dòng nào!');
+                    return;
+                }
+
+                // Nhận diện cột thông minh (hỗ trợ nhiều định dạng header khác nhau)
+                parsedStudents = rawJson.map((row, idx) => {
+                    const keys = Object.keys(row);
+                    const findVal = (keywords) => {
+                        const k = keys.find(key => keywords.some(kw => key.toLowerCase().includes(kw)));
+                        return k ? String(row[k]).trim() : '';
+                    };
+
+                    const code = findVal(['mã', 'mssv', 'code', 'masv']) || `SV${String(idx + 1).padStart(3, '0')}`;
+                    const name = findVal(['họ', 'tên', 'name', 'sinh viên']) || `Sinh viên ${idx + 1}`;
+                    const dept = findVal(['lớp', 'khoa', 'phòng', 'class', 'dept']) || 'Lớp Công nghệ Thông tin K24A (CNTT K24A)';
+                    const email = findVal(['email', 'mail']) || `${code.toLowerCase()}@ictu.edu.vn`;
+                    const phone = findVal(['phone', 'điện thoại', 'sđt', 'tel']) || '';
+                    const role = findVal(['chức', 'vụ', 'vai trò', 'position']) || 'Sinh viên';
+
+                    return { employee_code: code, full_name: name, department_name: dept, email, phone, position: role };
+                }).filter(s => s.employee_code && s.full_name);
+
+                // Hiển thị preview 5 dòng đầu
+                previewTableBody.innerHTML = '';
+                const previewRows = parsedStudents.slice(0, 5);
+                for (const s of previewRows) {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `<td><strong>${API.escapeHtml(s.employee_code)}</strong></td><td>${API.escapeHtml(s.full_name)}</td><td>${API.escapeHtml(s.department_name)}</td><td>${API.escapeHtml(s.email)}</td>`;
+                    previewTableBody.appendChild(tr);
+                }
+                importPreview.style.display = 'block';
+                btnExecuteImport.disabled = false;
+                btnExecuteImport.textContent = `Bắt đầu nhập (${parsedStudents.length} sinh viên)`;
+            } catch (err) {
+                console.error('Lỗi đọc tệp Excel', err);
+                alert('Không thể đọc tệp Excel: ' + err.message);
+            }
+        });
+    }
+
+    if (btnExecuteImport) {
+        btnExecuteImport.addEventListener('click', async () => {
+            if (!parsedStudents || parsedStudents.length === 0) return;
+            btnExecuteImport.disabled = true;
+            importProgress.style.display = 'block';
+
+            let count = 0;
+            let errors = 0;
+
+            for (const s of parsedStudents) {
+                try {
+                    // Tìm id lớp học phù hợp
+                    let deptId = null;
+                    const matchedDept = departmentList.find(d => 
+                        d.name.toLowerCase().includes(s.department_name.toLowerCase()) ||
+                        s.department_name.toLowerCase().includes(d.name.toLowerCase())
+                    );
+                    if (matchedDept) {
+                        deptId = matchedDept.id;
+                    } else if (departmentList.length > 0) {
+                        deptId = departmentList[0].id;
+                    }
+
+                    const fd = new FormData();
+                    fd.append('employee_code', s.employee_code);
+                    fd.append('full_name', s.full_name);
+                    fd.append('email', s.email);
+                    fd.append('phone', s.phone);
+                    if (deptId) fd.append('department_id', deptId);
+                    fd.append('position', s.position || 'Sinh viên');
+                    fd.append('work_start', '07:00');
+                    fd.append('work_end', '10:30');
+                    fd.append('shift_name', 'Ca sáng (Tiết 1 - 4: 07:00 - 10:30)');
+
+                    await API.post('/employees', fd);
+                    count++;
+                } catch (err) {
+                    errors++;
+                }
+            }
+
+            importProgress.style.display = 'none';
+            alert(`Nhập thành công ${count} sinh viên vào hệ thống!` + (errors > 0 ? ` (${errors} sinh viên đã tồn tại hoặc bỏ qua)` : ''));
+            closeImportModal();
+            load();
         });
     }
 
     async function loadDepts() {
         try {
             const r = await API.get('/departments');
-            deptFilt.innerHTML = '<option value="">-- Phòng ban --</option>';
-            empDept.innerHTML  = '<option value="">--</option>';
-            for (const d of r.data) {
-                const o1 = new Option(d.name, d.id);
-                const o2 = new Option(d.name, d.id);
-                deptFilt.add(o1);
-                empDept.add(o2);
+            departmentList = r.data || [];
+            deptFilt.innerHTML = '<option value="">-- Tất cả Lớp học / Khoa --</option>';
+            empDept.innerHTML  = '<option value="">-- Chọn Lớp học / Khoa --</option>';
+            for (const d of departmentList) {
+                deptFilt.add(new Option(d.name, d.id));
+                empDept.add(new Option(d.name, d.id));
             }
-        } catch (err) {
-            console.error('Failed to load departments', err);
+        } catch (e) {
+            console.error('Failed to load classes', e);
         }
     }
 
     async function load() {
         try {
             const params = new URLSearchParams();
-            if (search.value) params.set('search', search.value);
-            if (deptFilt.value) params.set('department_id', deptFilt.value);
-            if (status.value)   params.set('status', status.value);
+            if (search.value.trim()) params.set('search', search.value.trim());
+            if (deptFilt.value)      params.set('department_id', deptFilt.value);
+            if (status.value)        params.set('status', status.value);
+
             const r = await API.get('/employees?' + params.toString());
             tbody.innerHTML = '';
             for (const e of r.data) {
                 const tr = document.createElement('tr');
-                const shiftLabel = e.shift_name 
-                    ? `<span class="badge" style="background:#ede9fe;color:#5b21b6;font-weight:600;">${e.shift_name}</span>`
-                    : `<span class="badge" style="background:#ede9fe;color:#5b21b6;">${e.work_start || '08:30'} - ${e.work_end || '17:30'}</span>`;
-
-                let statusBadge = '<span class="badge badge-active">Đang làm việc</span>';
-                if (e.status === 'on_leave') {
-                    let leaveInfo = 'Nghỉ phép';
-                    if (e.leave_end) {
-                        const d = new Date(e.leave_end);
-                        const endFormatted = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
-                        leaveInfo = `Nghỉ phép (đến ${endFormatted})`;
-                    }
-                    const tooltip = (e.leave_start && e.leave_end) ? `Nghỉ từ ${e.leave_start.slice(0, 10)} đến ${e.leave_end.slice(0, 10)}` : 'Đang nghỉ phép';
-                    statusBadge = `<span class="badge badge-late" title="${tooltip}">${leaveInfo}</span>`;
-                } else if (e.status === 'terminated') {
-                    statusBadge = '<span class="badge badge-terminated">Đã nghỉ việc</span>';
+                const shiftLabel = `<span class="badge badge-shift">${API.escapeHtml(e.shift_name || 'Ca sáng (Tiết 1 - 4)')}</span>`;
+                
+                let statusBadge = '';
+                if (e.status === 'active') {
+                    statusBadge = '<span class="badge badge-active">Đang học</span>';
+                } else if (e.status === 'on_leave') {
+                    const lFrom = e.leave_start ? e.leave_start.slice(0, 10).split('-').reverse().join('/') : '';
+                    const lTo   = e.leave_end   ? e.leave_end.slice(0, 10).split('-').reverse().join('/')   : '';
+                    const leaveHint = (lFrom && lTo) ? ` (${lFrom} - ${lTo})` : '';
+                    statusBadge = `<span class="badge" style="background:#fef3c7;color:#92400e;border:1px solid #fde68a;" title="Nghỉ phép${leaveHint}">Nghỉ phép</span>`;
+                } else {
+                    statusBadge = '<span class="badge badge-terminated">Đã thôi học</span>';
                 }
 
                 const faceBadge = e.has_face
@@ -304,9 +414,9 @@
 
                 tr.innerHTML = `
                     <td><strong>${API.escapeHtml(e.employee_code)}</strong></td>
-                    <td>${API.escapeHtml(e.full_name)}</td>
+                    <td><strong>${API.escapeHtml(e.full_name)}</strong></td>
                     <td>${API.escapeHtml(e.department_name || '-')}</td>
-                    <td>${API.escapeHtml(e.position || '-')}</td>
+                    <td><span class="badge" style="background:#e0f2fe;color:#0369a1;">${API.escapeHtml(e.position || 'Sinh viên')}</span></td>
                     <td>${shiftLabel}</td>
                     <td>${statusBadge}</td>
                     <td>${faceBadge}</td>
@@ -323,7 +433,7 @@
                     btnEdit.onclick = () => openModal(true, e);
                     actions.appendChild(btnEdit);
 
-                    // Nút Nghỉ phép (nếu đang active) / Đi làm lại (nếu đang on_leave)
+                    // Nút Nghỉ phép / Đi học lại
                     if (e.status === 'active') {
                         const btnLeave = document.createElement('button');
                         btnLeave.className = 'btn btn-sm';
@@ -331,16 +441,16 @@
                         btnLeave.style.color = '#92400e';
                         btnLeave.style.borderColor = '#fde68a';
                         btnLeave.textContent = 'Nghỉ phép';
-                        btnLeave.title = 'Chọn ngày và đăng ký nghỉ phép';
+                        btnLeave.title = 'Đăng ký thời gian nghỉ phép';
                         btnLeave.onclick = () => openLeaveModal(e);
                         actions.appendChild(btnLeave);
                     } else if (e.status === 'on_leave') {
                         const btnBack = document.createElement('button');
                         btnBack.className = 'btn btn-sm btn-primary';
-                        btnBack.textContent = 'Đi làm lại';
-                        btnBack.title = 'Kích hoạt nhân viên đi làm lại sớm hơn dự kiến';
+                        btnBack.textContent = 'Đi học lại';
+                        btnBack.title = 'Kích hoạt sinh viên đi học lại sớm hơn dự kiến';
                         btnBack.onclick = async () => {
-                            if (!confirm(`Xác nhận cho nhân viên ${e.full_name} (${e.employee_code}) đi làm lại ngay hôm nay?`)) return;
+                            if (!confirm(`Xác nhận cho sinh viên ${e.full_name} (${e.employee_code}) đi học lại ngay hôm nay?`)) return;
                             try {
                                 await API.put('/employees/' + e.id, {
                                     ...e,
@@ -356,7 +466,7 @@
                         actions.appendChild(btnBack);
                     }
 
-                    // Nút Xoá hẳn
+                    // Nút Xoá
                     if (user.role === 'admin') {
                         const btnDel = document.createElement('button');
                         btnDel.className = 'btn btn-sm';
@@ -364,7 +474,7 @@
                         btnDel.style.color = '#ef4444';
                         btnDel.textContent = 'Xoá';
                         btnDel.onclick = async () => {
-                            if (!confirm(`CẢNH BÁO: Bạn có chắc muốn xoá vĩnh viễn nhân viên ${e.full_name} (${e.employee_code})?`)) return;
+                            if (!confirm(`Bạn có chắc muốn xoá hồ sơ sinh viên ${e.full_name} (${e.employee_code})?`)) return;
                             try {
                                 await API.del('/employees/' + e.id + '?hard=true');
                                 load();
@@ -378,10 +488,10 @@
                 tbody.appendChild(tr);
             }
             if (r.data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" class="muted" style="text-align:center;padding:16px;">Không tìm thấy nhân viên nào.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" class="muted" style="text-align:center;padding:16px;">Không tìm thấy sinh viên nào.</td></tr>';
             }
         } catch (err) {
-            tbody.innerHTML = `<tr><td colspan="8" class="error" style="text-align:center;padding:16px;">Không thể tải danh sách nhân viên: ${err.message}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="8" class="error" style="text-align:center;padding:16px;">Không thể tải danh sách sinh viên: ${err.message}</td></tr>`;
         }
     }
 
@@ -404,7 +514,7 @@
             closeModal();
             load();
         } catch (err) {
-            errEl.textContent = err.message || 'Có lỗi xảy ra khi lưu nhân viên';
+            errEl.textContent = err.message || 'Có lỗi xảy ra khi lưu hồ sơ sinh viên';
             errEl.hidden = false;
         }
     });

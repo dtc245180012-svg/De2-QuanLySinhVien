@@ -1,4 +1,4 @@
-// js/dashboard.js - Quản lý tổng quan & thống kê chấm công
+// js/dashboard.js - Quản lý tổng quan & thống kê điểm danh sinh viên
 (async () => {
     if (!API.requireAuth()) return;
 
@@ -62,12 +62,12 @@
             .replace(/"/g, '&quot;');
     }
 
-    // Load danh sách phòng ban cho bộ lọc
+    // Load danh sách Lớp học / Khoa cho bộ lọc
     async function loadDepts() {
         try {
             const r = await API.get('/departments');
             if (deptSelect && r.data) {
-                deptSelect.innerHTML = '<option value="">-- Tất cả phòng ban --</option>';
+                deptSelect.innerHTML = '<option value="">-- Tất cả Lớp / Khoa --</option>';
                 for (const d of r.data) {
                     deptSelect.add(new Option(d.name, d.id));
                 }
@@ -179,9 +179,9 @@
             else if (d.filter.status === 'early_leave') statusName = 'Về sớm';
             else if (d.filter.status === 'absent') statusName = 'Vắng mặt';
 
-            recentTableTitle.textContent = `Chi tiết hoạt động chấm công: ${statusName}`;
+            recentTableTitle.textContent = `Chi tiết hoạt động điểm danh sinh viên: ${statusName}`;
             if (selectedDateSub) {
-                selectedDateSub.textContent = `Đồng bộ dữ liệu chấm công từ ${fromFmt} đến ${toFmt}`;
+                selectedDateSub.textContent = `Đồng bộ dữ liệu điểm danh từ ${fromFmt} đến ${toFmt}`;
             }
 
             // Cập nhật giá trị thẻ thống kê (đồng bộ theo đúng khoảng thời gian lọc)
@@ -197,10 +197,11 @@
             // Bảng danh sách chi tiết bên dưới
             recBody.innerHTML = '';
             const actList = d.recent || [];
+            currentActList = actList;
             recentTableCount.textContent = `${actList.length} bản ghi`;
 
             if (actList.length === 0) {
-                recBody.innerHTML = `<tr><td colspan="9" class="muted text-center" style="padding:28px;">Không có dữ liệu chấm công nào phù hợp (${statusName}) trong khoảng thời gian ${rangeText}.</td></tr>`;
+                recBody.innerHTML = `<tr><td colspan="9" class="muted text-center" style="padding:28px;">Không có dữ liệu điểm danh nào phù hợp (${statusName}) trong khoảng thời gian ${rangeText}.</td></tr>`;
             } else {
                 for (const act of actList) {
                     const tr = document.createElement('tr');
@@ -260,6 +261,58 @@
         } catch (err) {
             console.error('Lỗi tải dashboard', err);
         }
+    }
+
+    let currentActList = [];
+
+    // Gắn sự kiện xuất dữ liệu điểm danh sang CSV
+    const btnExportCSV = document.getElementById('btnExportCSV');
+    if (btnExportCSV) {
+        btnExportCSV.addEventListener('click', () => {
+            if (!currentActList || currentActList.length === 0) {
+                alert('Không có dữ liệu điểm danh nào trong bộ lọc hiện tại để xuất file!');
+                return;
+            }
+            const headers = ['Ngày', 'Mã sinh viên (MSSV)', 'Họ và tên sinh viên', 'Lớp học / Khoa', 'Ca học / Tiết học', 'Giờ vào', 'Giờ ra', 'Trạng thái', 'Độ tin cậy'];
+            let csv = '\uFEFF' + headers.join(',') + '\n';
+            for (const act of currentActList) {
+                const dateStr = formatDateDisplay(act.date);
+                const ci = act.check_in ? new Date(act.check_in).toLocaleTimeString('vi-VN') : '-';
+                const co = act.check_out ? new Date(act.check_out).toLocaleTimeString('vi-VN') : '-';
+                const conf = act.confidence_in || act.confidence_out;
+                const confStr = conf ? `${(parseFloat(conf) * 100).toFixed(1)}%` : (act.check_in ? (act.check_in_method || 'manual') : '-');
+
+                let statusText = act.status || '';
+                if (statusText === 'on_time') statusText = 'Đúng giờ';
+                else if (statusText === 'late') statusText = 'Đi muộn';
+                else if (statusText === 'early_leave') statusText = 'Về sớm';
+                else if (statusText === 'absent') statusText = 'Vắng mặt';
+
+                const row = [
+                    `"${dateStr}"`,
+                    `"${(act.employee_code || '').replace(/"/g, '""')}"`,
+                    `"${(act.full_name || '').replace(/"/g, '""')}"`,
+                    `"${(act.department_name || '-').replace(/"/g, '""')}"`,
+                    `"${(act.shift_name || 'Ca chuẩn').replace(/"/g, '""')}"`,
+                    `"${ci}"`,
+                    `"${co}"`,
+                    `"${statusText}"`,
+                    `"${confStr}"`
+                ];
+                csv += row.join(',') + '\n';
+            }
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.setAttribute('href', url);
+            const fromVal = fromInput ? fromInput.value : '';
+            const toVal = toInput ? toInput.value : '';
+            link.setAttribute('download', `DiemDanhSinhVien_${fromVal || 'data'}_den_${toVal || 'data'}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        });
     }
 
     // Khởi tạo ngày mặc định: Hôm nay

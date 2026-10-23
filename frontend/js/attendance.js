@@ -11,13 +11,13 @@
     if (currentUser && currentUser.role === 'kiosk') {
         const nav = document.querySelector('.topbar nav');
         if (nav) {
-            nav.innerHTML = '<span style="color:#93c5fd;font-weight:600;display:flex;align-items:center;gap:6px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg> Máy chấm công Kiosk (Cửa ra vào)</span>';
+            nav.innerHTML = '<span style="color:#93c5fd;font-weight:600;display:flex;align-items:center;gap:6px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg> Kiosk Điểm danh Sinh viên (Cửa phòng học)</span>';
         }
         const brandSm = document.querySelector('.topbar .brand-sm');
-        if (brandSm) brandSm.textContent = 'KIOSK ĐIỂM DANH';
+        if (brandSm) brandSm.textContent = 'KIOSK ĐIỂM DANH SINH VIÊN';
         const pageH1 = document.querySelector('main h1');
         if (pageH1) {
-            pageH1.innerHTML = 'Máy chấm công khuôn mặt <span style="font-size:0.55em;color:#0284c7;font-weight:600;padding:4px 10px;background:#e0f2fe;border-radius:12px;margin-left:8px;vertical-align:middle;display:inline-block;">Kiosk Cửa ra vào</span>';
+            pageH1.innerHTML = 'Máy điểm danh sinh viên bằng khuôn mặt <span style="font-size:0.55em;color:#0284c7;font-weight:600;padding:4px 10px;background:#e0f2fe;border-radius:12px;margin-left:8px;vertical-align:middle;display:inline-block;">Kiosk Cửa phòng học</span>';
         }
     }
 
@@ -46,7 +46,7 @@
         const fd = new FormData();
         fd.append('file', blob, filename);
         resultBox.className = 'result-empty';
-        resultBox.textContent = 'Đang xử lý nhận diện khuôn mặt...';
+        resultBox.textContent = 'Đang xử lý nhận diện khuôn mặt sinh viên...';
         btnCapture.disabled = true;
         try {
             const r = await API.post('/attendance/face-check', fd);
@@ -54,7 +54,7 @@
             if (d.matched === false) {
                 showResult('warn',
                     `<h3>Không nhận diện được</h3>
-                     <p>Không có nhân viên nào trong hệ thống khớp với khuôn mặt này.</p>
+                     <p>Không có sinh viên nào trong hệ thống khớp với khuôn mặt này.</p>
                      <p class="result-meta">Độ sai lệch: ${d.distance} (ngưỡng: ${d.threshold})</p>`);
                 return;
             }
@@ -62,19 +62,19 @@
             if (d.action === 'check_in') {
                 showResult('ok',
                     `<h3>Điểm danh vào thành công</h3>
-                     <p><b>${d.employee.full_name}</b> (${d.employee.employee_code})</p>
+                     <p><b>${d.employee.full_name}</b> (MSSV: ${d.employee.employee_code})</p>
                      <p>Trạng thái: ${stBadge}</p>
                      <p class="result-meta">Độ tin cậy: ${(d.confidence * 100).toFixed(1)}%</p>`);
             } else if (d.action === 'check_out') {
                 showResult('ok',
                     `<h3>Điểm danh ra thành công</h3>
-                     <p><b>${d.employee.full_name}</b> (${d.employee.employee_code})</p>
+                     <p><b>${d.employee.full_name}</b> (MSSV: ${d.employee.employee_code})</p>
                      <p>Trạng thái: ${stBadge}</p>
                      <p class="result-meta">Độ tin cậy: ${(d.confidence * 100).toFixed(1)}%</p>`);
             } else {
-                let msg = d.message || 'Đã hoàn thành điểm danh vào và ra cho ngày hôm nay.';
+                let msg = d.message || 'Đã hoàn thành điểm danh vào và ra cho buổi học hôm nay.';
                 if (msg.toLowerCase().includes('already checked')) {
-                    msg = 'Nhân viên đã hoàn thành điểm danh vào và ra cho ngày hôm nay.';
+                    msg = 'Sinh viên đã hoàn thành điểm danh vào và ra cho buổi học hôm nay.';
                 }
                 showResult('warn', `<h3>Thông báo</h3><p>${msg}</p>`);
             }
@@ -84,11 +84,11 @@
             if (err.data && (err.data.error === 'NO_FACE' || err.data.message === 'No face detected in image')) {
                 errMsg = 'Không tìm thấy khuôn mặt trong ảnh. Vui lòng đưa khuôn mặt vào giữa khung hình rõ ràng.';
             } else if (err.data && err.data.error === 'NO_ENROLLED_EMPLOYEE') {
-                errMsg = 'Chưa có nhân viên nào đăng ký khuôn mặt trong hệ thống.';
+                errMsg = 'Chưa có sinh viên nào đăng ký khuôn mặt trong hệ thống.';
             } else if (err.data && (err.data.error === 'AI service unavailable' || err.data.error === 'Dịch vụ AI nhận diện không khả dụng')) {
                 errMsg = 'Dịch vụ AI nhận diện khuôn mặt hiện chưa sẵn sàng.';
             }
-            showResult('err', `<h3>Lỗi chấm công</h3><p>${errMsg}</p>`);
+            showResult('err', `<h3>Lỗi điểm danh</h3><p>${errMsg}</p>`);
         } finally {
             if (stream) btnCapture.disabled = false;
         }
@@ -141,7 +141,7 @@
         const canViewCompanyHistory = user && (user.role === 'admin' || user.role === 'hr' || user.role === 'kiosk');
         const titleEl = document.getElementById('attHistoryTitle');
         if (titleEl) {
-            titleEl.textContent = 'Lịch sử chấm công gần đây';
+            titleEl.textContent = 'Lịch sử điểm danh sinh viên gần đây';
         }
 
         try {
@@ -152,7 +152,7 @@
             const rows = r.data || [];
 
             if (rows.length === 0) {
-                myAttBody.innerHTML = '<tr><td colspan="6" class="muted" style="text-align:center;padding:16px;">Chưa có dữ liệu chấm công.</td></tr>';
+                myAttBody.innerHTML = '<tr><td colspan="6" class="muted" style="text-align:center;padding:16px;">Chưa có dữ liệu điểm danh.</td></tr>';
                 return;
             }
 
@@ -190,17 +190,113 @@
                     <td>${ci}</td>
                     <td>${co}</td>
                     <td>${badgesHtml}</td>
-                    <td>${conf ? (parseFloat(conf) * 100).toFixed(1) + '%' : '-'}</td>
+                    <td>${conf ? (parseFloat(conf) * 100).toFixed(1) + '%' : (row.check_in_method === 'manual' ? '<span class="badge" style="background:#e0e7ff;color:#3730a3;">Thủ công</span>' : '-')}</td>
                 `;
                 myAttBody.appendChild(tr);
             }
         } catch (err) {
-            myAttBody.innerHTML = `<tr><td colspan="6" class="error" style="text-align:center;padding:16px;">Lỗi tải lịch sử chấm công: ${err.message}</td></tr>`;
+            myAttBody.innerHTML = `<tr><td colspan="6" class="error" style="text-align:center;padding:16px;">Lỗi tải lịch sử điểm danh: ${err.message}</td></tr>`;
         }
     }
 
     const btnReloadAtt = document.getElementById('btnReloadAtt');
     if (btnReloadAtt) btnReloadAtt.addEventListener('click', loadMyHistory);
+
+    // --- DIEM DANH THU CONG (Admin / Giao vien) ---
+    const btnManualModal   = document.getElementById('btnManualCheckModal');
+    const manualModal      = document.getElementById('manualCheckModal');
+    const btnCloseManual   = document.getElementById('btnCloseManualModal');
+    const btnCancelManual  = document.getElementById('btnCancelManual');
+    const manualForm       = document.getElementById('manualCheckForm');
+    const manualDeptSelect = document.getElementById('manualDeptSelect');
+    const manualEmpSelect  = document.getElementById('manualEmpSelect');
+    const manualCheckError = document.getElementById('manualCheckError');
+
+    let allStudentsCache = [];
+
+    if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'hr')) {
+        if (btnManualModal) btnManualModal.style.display = 'inline-flex';
+
+        async function loadManualData() {
+            try {
+                const dRes = await API.get('/departments');
+                const depts = dRes.data || [];
+                manualDeptSelect.innerHTML = '<option value="">-- Tất cả các lớp --</option>' +
+                    depts.map(d => `<option value="${d.id}">${API.escapeHtml(d.name)}</option>`).join('');
+
+                const eRes = await API.get('/employees?limit=300');
+                allStudentsCache = eRes.data || [];
+                renderStudentOptions();
+            } catch (err) {
+                console.error('Lỗi nạp danh sách điểm danh:', err);
+            }
+        }
+
+        function renderStudentOptions() {
+            const selectedDept = manualDeptSelect.value;
+            const filtered = selectedDept
+                ? allStudentsCache.filter(s => String(s.department_id) === String(selectedDept))
+                : allStudentsCache;
+
+            if (filtered.length === 0) {
+                manualEmpSelect.innerHTML = '<option value="">-- Không có sinh viên nào --</option>';
+                return;
+            }
+
+            manualEmpSelect.innerHTML = '<option value="">-- Chọn sinh viên --</option>' +
+                filtered.map(s => `<option value="${s.id}">[${API.escapeHtml(s.employee_code)}] ${API.escapeHtml(s.full_name)} (${API.escapeHtml(s.department_name || '')})</option>`).join('');
+        }
+
+        manualDeptSelect.addEventListener('change', renderStudentOptions);
+
+        btnManualModal.addEventListener('click', async () => {
+            manualCheckError.hidden = true;
+            manualModal.hidden = false;
+            if (allStudentsCache.length === 0) {
+                await loadManualData();
+            }
+        });
+
+        const closeManualModal = () => { manualModal.hidden = true; manualForm.reset(); };
+        if (btnCloseManual) btnCloseManual.addEventListener('click', closeManualModal);
+        if (btnCancelManual) btnCancelManual.addEventListener('click', closeManualModal);
+
+        manualForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            manualCheckError.hidden = true;
+            const empId = manualEmpSelect.value;
+            const type = document.getElementById('manualTypeSelect').value;
+            const note = document.getElementById('manualNoteInput').value.trim();
+
+            if (!empId) {
+                manualCheckError.textContent = 'Vui lòng chọn một sinh viên!';
+                manualCheckError.hidden = false;
+                return;
+            }
+
+            const btnSubmit = document.getElementById('btnSubmitManual');
+            btnSubmit.disabled = true;
+            btnSubmit.textContent = 'Đang xử lý...';
+
+            try {
+                await API.post('/attendance/manual', {
+                    employee_id: parseInt(empId, 10),
+                    type,
+                    note
+                });
+
+                closeManualModal();
+                alert('Đã điểm danh thủ công thành công!');
+                await loadMyHistory();
+            } catch (err) {
+                manualCheckError.textContent = err.data?.error || err.message || 'Lỗi khi điểm danh thủ công';
+                manualCheckError.hidden = false;
+            } finally {
+                btnSubmit.disabled = false;
+                btnSubmit.textContent = 'Xác nhận Điểm danh';
+            }
+        });
+    }
 
     await loadMyHistory();
 })();

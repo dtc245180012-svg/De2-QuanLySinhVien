@@ -26,13 +26,17 @@ app.use(helmet({
     crossOriginEmbedderPolicy: false,
 }));
 
-// CORS — allow only known origins (mirror Nginx whitelist)
+// CORS — allow known origins and private LAN IPs (192.168.x.x, 10.x.x.x, localhost)
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost,http://localhost:80,http://localhost:8080,http://127.0.0.1,https://localhost,https://127.0.0.1')
     .split(',').map(s => s.trim()).filter(Boolean);
 app.use(cors({
     origin: (origin, cb) => {
         if (!origin) return cb(null, true);
         if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) return cb(null, true);
+        // Tự động cho phép các IP mạng nội bộ LAN / Máy ảo
+        if (/^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)(:\d+)?$/.test(origin)) {
+            return cb(null, true);
+        }
         return cb(new Error('CORS not allowed: ' + origin));
     },
     credentials: true,
