@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hệ thống Điểm danh - Khoa / Lớp</title>
+<link rel="stylesheet" href="css/style.css?v=2.5">
+</head>
+<body>
+<header class="topbar">
+    <div class="brand-sm">ĐIỂM DANH</div>
+    <nav>
+        <a href="dashboard.html">Dashboard</a>
+        <a href="employees.html">Sinh viên / Nhân viên</a>
+        <a href="departments.html" class="active">Khoa / Lớp</a>
+        <a href="shifts.html">Ca / Tiết học</a>
+        <a href="attendance.html">Điểm danh</a>
+    </nav>
+    <div class="user">
+        <span id="meName">...</span>
+        <button id="btnLogout" class="btn btn-ghost">Đăng xuất</button>
+    </div>
+</header>
+
+<main class="container">
+    <div class="page-header">
+        <h1>Phòng ban</h1>
+        <button id="btnNewDept" class="btn btn-primary">+ Thêm phòng ban</button>
+    </div>
+
+    <div class="card">
+        <table class="table" id="deptTable">
+            <thead>
+                <tr><th>Tên</th><th>Mô tả</th><th>Số nhân viên</th><th>Hành động</th></tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</main>
+
+<div id="deptModal" class="modal" style="display: none !important;" aria-hidden="true">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h2 id="deptModalTitle">Thêm phòng ban</h2>
+            <button type="button" class="btn-close" id="btnCloseDeptModal" title="Đóng">&times;</button>
+        </div>
+        <form id="deptForm">
+            <input type="hidden" name="id" id="deptIdInput">
+            <label>Tên *<input name="name" id="deptNameInput" required></label>
+            <label>Mô tả <textarea name="description" id="deptDescInput"></textarea></label>
+            <div class="modal-actions">
+                <button type="button" id="btnCancel" class="btn">Hủy</button>
+                <button type="submit" class="btn btn-primary">Lưu</button>
+            </div>
+            <p id="deptFormError" class="error" hidden></p>
+        </form>
+    </div>
+</div>
+
+<script src="js/api.js?v=2.1"></script>
+<script src="js/departments.js?v=2.1"></script>
+</body>
+</html>
