@@ -1,0 +1,377 @@
+// js/dashboard.js - Quản lý tổng quan & thống kê điểm danh sinh viên
+(async () => {
+    if (!API.requireAuth()) return;
+
+    const user = API.getUser();
+    if (user && user.role === 'employee') {
+        location.href = 'attendance.html';
+        return;
+    }
+
+    try {
+        const me = await API.me();
+        document.getElementById('meName').textContent = me.data.full_name || me.data.username;
+    } catch {}
+    document.getElementById('btnLogout').addEventListener('click', () => API.logout());
+
+    // DOM Elements - Bộ lọc
+    const deptSelect       = document.getElementById('dashDeptSelect');
+    const fromInput        = document.getElementById('dashFromDate');
+    const toInput          = document.getElementById('dashToDate');
+    const statusSelect     = document.getElementById('dashStatusSelect');
+    const searchInput      = document.getElementById('dashSearchInput');
+    const btnApplyFilter   = document.getElementById('btnApplyFilter');
+    const btnResetFilter   = document.getElementById('btnResetFilter');
+
+    // DOM Elements - Thẻ thống kê
+    const statCards        = document.querySelectorAll('.stat-clickable');
+    const cardActive       = document.getElementById('cardStatActive');
+    const cardOnTime       = document.getElementById('cardStatOnTime');
+    const cardLate         = document.getElementById('cardStatLate');
+    const cardEarlyLeave   = document.getElementById('cardStatEarlyLeave');
+    const cardAbsent       = document.getElementById('cardStatAbsent');
+
+    const statActiveVal    = document.getElementById('statActive');
+    const statOnTimeVal    = document.getElementById('statOnTime');
+    const statLateVal      = document.getElementById('statLate');
+    const statEarlyLeaveVal= document.getElementById('statEarlyLeave');
+    const statAbsentVal    = document.getElementById('statAbsent');
+
+    // DOM Elements - Bảng chi tiết
+    const recentTableTitle = document.getElementById('recentTableTitle');
+    const selectedDateSub  = document.getElementById('selectedDateSub');
+    const recentTableCount = document.getElementById('recentTableCount');
+    const recBody          = document.querySelector('#recentTable tbody');
+
+    // Current active status filter
+    let activeStatus = '';
+
+    function formatDateDisplay(dStr) {
+        if (!dStr) return '-';
+        const parts = dStr.slice(0, 10).split('-');
+        if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+        return new Date(dStr).toLocaleDateString('vi-VN');
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    // Load danh sách Lớp học / Khoa cho bộ lọc
+    async function loadDepts() {
+        try {
+            const r = await API.get('/departments');
+            if (deptSelect && r.data) {
+                deptSelect.innerHTML = '<option value="">-- Tất cả Lớp / Khoa --</option>';
+                for (const d of r.data) {
+                    deptSelect.add(new Option(d.name, d.id));
+                }
+            }
+        } catch (e) {
+            console.error('Failed to load departments', e);
+        }
+    }
+
+    // Đồng bộ thẻ thống kê active với status đang chọn
+    function syncCardActiveState(status) {
+        activeStatus = status || '';
+        statCards.forEach(card => {
+            const cardStatus = card.dataset.status || '';
+            if (activeStatus === cardStatus) {
+                card.classList.add('active');
+            } else {
+                card.classList.remove('active');
+            }
+        });
+    }
+
+    // Gán sự kiện click vào từng thẻ thống kê
+    statCards.forEach(card => {
+        card.addEventListener('click', () => {
+            const clickedStatus = card.dataset.status || '';
+            // Nếu bấm vào thẻ đang chọn (khác thẻ all), bấm lần nữa để bỏ lọc
+            if (activeStatus === clickedStatus && clickedStatus !== '') {
+                statusSelect.value = '';
+                syncCardActiveState('');
+            } else {
+                statusSelect.value = clickedStatus;
+                syncCardActiveState(clickedStatus);
+            }
+            loadDashboard();
+        });
+    });
+
+    // Khi người dùng đổi status trên dropdown bộ lọc, đồng bộ lại thẻ active
+    statusSelect.addEventListener('change', () => {
+        syncCardActiveState(statusSelect.value);
+        loadDashboard();
+    });
+
+    deptSelect.addEventListener('change', () => loadDashboard());
+
+    // Nút chọn nhanh thời gian
+    function setPresetDates(daysAgo) {
+        const nowObj = new Date();
+        const toStr = nowObj.toISOString().slice(0, 10);
+        let fromStr = toStr;
+        if (daysAgo === 'month') {
+            const firstDay = new Date(nowObj.getFullYear(), nowObj.getMonth(), 1);
+            fromStr = firstDay.toISOString().slice(0, 10);
+        } else if (daysAgo > 0) {
+            const past = new Date(nowObj.getTime() - daysAgo * 86400000);
+            fromStr = past.toISOString().slice(0, 10);
+        }
+        fromInput.value = fromStr;
+        toInput.value   = toStr;
+        loadDashboard();
+    }
+
+    document.getElementById('btnPresetToday')?.addEventListener('click', () => setPresetDates(0));
+    document.getElementById('btnPreset7Days')?.addEventListener('click', () => setPresetDates(6));
+    document.getElementById('btnPresetMonth')?.addEventListener('click', () => setPresetDates('month'));
+
+    btnApplyFilter?.addEventListener('click', () => loadDashboard());
+
+    btnResetFilter?.addEventListener('click', () => {
+        const today = new Date().toISOString().slice(0, 10);
+        fromInput.value = today;
+        toInput.value = today;
+        deptSelect.value = '';
+        statusSelect.value = '';
+        searchInput.value = '';
+        syncCardActiveState('');
+        loadDashboard();
+    });
+
+    searchInput?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') loadDashboard();
+    });
+
+    // Tải và hiển thị dữ liệu Dashboard
+    async function loadDashboard() {
+        const params = new URLSearchParams();
+        if (fromInput.value) params.set('from', fromInput.value);
+        if (toInput.value) params.set('to', toInput.value);
+        if (deptSelect && deptSelect.value) params.set('department_id', deptSelect.value);
+        if (statusSelect && statusSelect.value) params.set('status', statusSelect.value);
+        if (searchInput && searchInput.value.trim()) params.set('search', searchInput.value.trim());
+
+        try {
+            const r = await API.get('/dashboard/overview?' + params.toString());
+            const d = r.data;
+
+            // Đồng bộ ngày tháng hiển thị
+            const fromFmt = formatDateDisplay(d.filter.from);
+            const toFmt   = formatDateDisplay(d.filter.to);
+            const rangeText = (d.filter.from === d.filter.to) ? fromFmt : `${fromFmt} - ${toFmt}`;
+
+            document.getElementById('todayLabel').textContent = `Thời gian thống kê: ${rangeText} (Hôm nay: ${formatDateDisplay(d.today)})`;
+
+            // Tên trạng thái đang lọc
+            let statusName = 'Tất cả trạng thái';
+            if (d.filter.status === 'on_time') statusName = 'Đúng giờ';
+            else if (d.filter.status === 'late') statusName = 'Đi muộn';
+            else if (d.filter.status === 'early_leave') statusName = 'Về sớm';
+            else if (d.filter.status === 'absent') statusName = 'Vắng mặt';
+
+            recentTableTitle.textContent = `Chi tiết hoạt động điểm danh sinh viên: ${statusName}`;
+            if (selectedDateSub) {
+                selectedDateSub.textContent = `Đồng bộ dữ liệu điểm danh từ ${fromFmt} đến ${toFmt}`;
+            }
+
+            // Cập nhật giá trị thẻ thống kê (đồng bộ theo đúng khoảng thời gian lọc)
+            const onTimeNum    = parseInt(d.today_stats.on_time || 0, 10);
+            const lateNum      = parseInt(d.today_stats.late || 0, 10);
+            const earlyNum     = parseInt(d.today_stats.early_leave || 0, 10);
+            const absentNum    = parseInt(d.today_stats.absent || 0, 10);
+            const activeEmpNum = parseInt(d.employees.active_employees || 0, 10);
+
+            statActiveVal.textContent     = activeEmpNum;
+            statOnTimeVal.textContent     = onTimeNum;
+            statLateVal.textContent       = lateNum;
+            statEarlyLeaveVal.textContent = earlyNum;
+            statAbsentVal.textContent     = absentNum;
+
+            // Cập nhật thanh tỷ lệ chuyên cần trực quan
+            const totalAtt = onTimeNum + lateNum + earlyNum + absentNum;
+            const presentNum = onTimeNum + lateNum + earlyNum;
+            const ratePercent = totalAtt > 0 ? Math.round((presentNum / totalAtt) * 100) : 0;
+            const ratePercentEl = document.getElementById('attendanceRatePercent');
+            if (ratePercentEl) {
+                ratePercentEl.textContent = `${ratePercent}%`;
+                ratePercentEl.style.color = ratePercent >= 80 ? '#10b981' : (ratePercent >= 50 ? '#f59e0b' : '#ef4444');
+            }
+            if (totalAtt > 0) {
+                const bOnTime = document.getElementById('barOnTime');
+                const bLate   = document.getElementById('barLate');
+                const bEarly  = document.getElementById('barEarly');
+                const bAbsent = document.getElementById('barAbsent');
+                if (bOnTime) bOnTime.style.width = `${(onTimeNum / totalAtt) * 100}%`;
+                if (bLate)   bLate.style.width   = `${(lateNum / totalAtt) * 100}%`;
+                if (bEarly)  bEarly.style.width  = `${(earlyNum / totalAtt) * 100}%`;
+                if (bAbsent) bAbsent.style.width = `${(absentNum / totalAtt) * 100}%`;
+            }
+            const lOnTime = document.getElementById('lblOnTimeCount');
+            const lLate   = document.getElementById('lblLateCount');
+            const lEarly  = document.getElementById('lblEarlyCount');
+            const lAbsent = document.getElementById('lblAbsentCount');
+            if (lOnTime) lOnTime.textContent = onTimeNum;
+            if (lLate)   lLate.textContent   = lateNum;
+            if (lEarly)  lEarly.textContent  = earlyNum;
+            if (lAbsent) lAbsent.textContent = absentNum;
+
+            // Đồng bộ trạng thái active của các thẻ
+            syncCardActiveState(d.filter.status);
+
+            // Bảng danh sách chi tiết bên dưới
+            recBody.innerHTML = '';
+            const actList = d.recent || [];
+            
+            // Sắp xếp danh sách chi tiết: Ngày giảm dần, sau đó theo Tên sinh viên (A-Z)
+            actList.sort((a, b) => {
+                if (a.date !== b.date) return (b.date || '').localeCompare(a.date || '');
+                const nameA = (a.full_name || '').trim();
+                const nameB = (b.full_name || '').trim();
+                const partsA = nameA.split(/\s+/);
+                const partsB = nameB.split(/\s+/);
+                const firstNameA = partsA[partsA.length - 1] || '';
+                const firstNameB = partsB[partsB.length - 1] || '';
+                const cmp = firstNameA.localeCompare(firstNameB, 'vi', { sensitivity: 'base' });
+                if (cmp !== 0) return cmp;
+                return (a.employee_code || '').localeCompare(b.employee_code || '');
+            });
+
+            currentActList = actList;
+            recentTableCount.textContent = `${actList.length} bản ghi`;
+
+            if (actList.length === 0) {
+                recBody.innerHTML = `<tr><td colspan="9" class="muted text-center" style="padding:28px;">Không có dữ liệu điểm danh nào phù hợp (${statusName}) trong khoảng thời gian ${rangeText}.</td></tr>`;
+            } else {
+                for (const act of actList) {
+                    const tr = document.createElement('tr');
+                    const dateStr = formatDateDisplay(act.date);
+                    const ci = act.check_in  ? new Date(act.check_in).toLocaleTimeString('vi-VN')  : '-';
+                    const co = act.check_out ? new Date(act.check_out).toLocaleTimeString('vi-VN') : '-';
+
+                    const conf = act.confidence_in || act.confidence_out;
+                    const confStr = conf ? `${(parseFloat(conf) * 100).toFixed(1)}%` : (act.check_in ? (act.check_in_method || 'manual') : '-');
+
+                    let badgesHtml = '';
+                    const inStatus = act.check_in_status || (act.status === 'late' ? 'late' : (act.status === 'absent' ? 'absent' : 'on_time'));
+                    const outStatus = act.check_out_status || (act.status === 'early_leave' ? 'early_leave' : (act.check_out ? 'on_time' : null));
+
+                    if (act.status === 'absent' || inStatus === 'absent') {
+                        let isUpcoming = false;
+                        if (act.work_start) {
+                            const now = new Date();
+                            const curMins = now.getHours() * 60 + now.getMinutes();
+                            const parts = act.work_start.toString().slice(0, 5).split(':').map(Number);
+                            const startMins = (parts[0] || 0) * 60 + (parts[1] || 0);
+                            if (startMins > curMins && d.filter.from === d.today && d.filter.to === d.today) {
+                                isUpcoming = true;
+                            }
+                        }
+                        if (isUpcoming) {
+                            badgesHtml = '<span class="badge" style="background:#e0f2fe;color:#0369a1;font-weight:600;">Chưa vào ca</span>';
+                        } else {
+                            badgesHtml = '<span class="badge badge-absent">Vắng mặt</span>';
+                        }
+                    } else if (inStatus === 'on_time' && outStatus === 'early_leave') {
+                        badgesHtml = '<span class="badge badge-on-time">Đến đúng giờ</span> <span class="badge badge-early-leave">Về sớm</span>';
+                    } else if (inStatus === 'late' && outStatus === 'early_leave') {
+                        badgesHtml = '<span class="badge badge-late">Đi muộn</span> <span class="badge badge-early-leave">Về sớm</span>';
+                    } else if (inStatus === 'late') {
+                        badgesHtml = '<span class="badge badge-late">Đi muộn</span>';
+                    } else if (inStatus === 'on_time') {
+                        badgesHtml = '<span class="badge badge-on-time">Đúng giờ</span>';
+                    } else {
+                        badgesHtml = `<span class="badge">${escapeHtml(act.status)}</span>`;
+                    }
+
+                    tr.innerHTML = `
+                        <td><strong>${escapeHtml(dateStr)}</strong></td>
+                        <td><code>${escapeHtml(act.employee_code)}</code></td>
+                        <td><strong>${escapeHtml(act.full_name)}</strong></td>
+                        <td>${escapeHtml(act.department_name || '-')}</td>
+                        <td><span class="badge badge-shift">${escapeHtml(act.shift_name || 'Ca chuẩn')}</span></td>
+                        <td><span style="font-family: monospace; font-weight: 600; color: #047857;">${ci}</span></td>
+                        <td><span style="font-family: monospace; font-weight: 600; color: #b91c1c;">${co}</span></td>
+                        <td>${badgesHtml}</td>
+                        <td><small class="muted">${escapeHtml(confStr)}</small></td>
+                    `;
+                    recBody.appendChild(tr);
+                }
+            }
+        } catch (err) {
+            console.error('Lỗi tải dashboard', err);
+            const todayLabelEl = document.getElementById('todayLabel');
+            if (todayLabelEl) todayLabelEl.textContent = 'Lỗi tải dữ liệu: ' + (err.message || 'Không thể kết nối');
+            if (recBody) recBody.innerHTML = `<tr><td colspan="9" class="error text-center" style="padding:28px; color: #dc2626;">Lỗi tải dữ liệu: ${escapeHtml(err.message || 'Không rõ lỗi')}</td></tr>`;
+        }
+    }
+
+    let currentActList = [];
+
+    // Gắn sự kiện xuất dữ liệu điểm danh sang CSV
+    const btnExportCSV = document.getElementById('btnExportCSV');
+    if (btnExportCSV) {
+        btnExportCSV.addEventListener('click', () => {
+            if (!currentActList || currentActList.length === 0) {
+                alert('Không có dữ liệu điểm danh nào trong bộ lọc hiện tại để xuất file!');
+                return;
+            }
+            const headers = ['Ngày', 'Mã sinh viên (MSSV)', 'Họ và tên sinh viên', 'Lớp học / Khoa', 'Ca học / Tiết học', 'Giờ vào', 'Giờ ra', 'Trạng thái', 'Độ tin cậy'];
+            let csv = '\uFEFF' + headers.join(',') + '\n';
+            for (const act of currentActList) {
+                const dateStr = formatDateDisplay(act.date);
+                const ci = act.check_in ? new Date(act.check_in).toLocaleTimeString('vi-VN') : '-';
+                const co = act.check_out ? new Date(act.check_out).toLocaleTimeString('vi-VN') : '-';
+                const conf = act.confidence_in || act.confidence_out;
+                const confStr = conf ? `${(parseFloat(conf) * 100).toFixed(1)}%` : (act.check_in ? (act.check_in_method || 'manual') : '-');
+
+                let statusText = act.status || '';
+                if (statusText === 'on_time') statusText = 'Đúng giờ';
+                else if (statusText === 'late') statusText = 'Đi muộn';
+                else if (statusText === 'early_leave') statusText = 'Về sớm';
+                else if (statusText === 'absent') statusText = 'Vắng mặt';
+
+                const row = [
+                    `"${dateStr}"`,
+                    `"${(act.employee_code || '').replace(/"/g, '""')}"`,
+                    `"${(act.full_name || '').replace(/"/g, '""')}"`,
+                    `"${(act.department_name || '-').replace(/"/g, '""')}"`,
+                    `"${(act.shift_name || 'Ca chuẩn').replace(/"/g, '""')}"`,
+                    `"${ci}"`,
+                    `"${co}"`,
+                    `"${statusText}"`,
+                    `"${confStr}"`
+                ];
+                csv += row.join(',') + '\n';
+            }
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.setAttribute('href', url);
+            const fromVal = fromInput ? fromInput.value : '';
+            const toVal = toInput ? toInput.value : '';
+            link.setAttribute('download', `DiemDanhSinhVien_${fromVal || 'data'}_den_${toVal || 'data'}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        });
+    }
+
+    // Khởi tạo ngày mặc định: Hôm nay
+    const todayDefault = new Date().toISOString().slice(0, 10);
+    if (fromInput) fromInput.value = todayDefault;
+    if (toInput)   toInput.value   = todayDefault;
+
+    await loadDepts();
+    await loadDashboard();
+})();

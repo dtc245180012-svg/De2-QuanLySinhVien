@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hệ thống Điểm danh - Dashboard</title>
+<link rel="stylesheet" href="css/style.css?v=2.5">
+</head>
+<body>
+<header class="topbar">
+    <div class="brand-sm">ĐIỂM DANH SINH VIÊN</div>
+    <nav>
+        <a href="dashboard.html" class="active">Dashboard</a>
+        <a href="employees.html">Sinh viên</a>
+        <a href="departments.html">Lớp học / Khoa</a>
+        <a href="shifts.html">Ca / Tiết học</a>
+        <a href="attendance.html">Điểm danh</a>
+    </nav>
+    <div class="user">
+        <span id="meName">...</span>
+        <button id="btnLogout" class="btn btn-ghost">Đăng xuất</button>
+    </div>
+</header>
+
+<main class="container">
+    <div class="page-header" style="margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+        <div>
+            <h1 style="margin: 0 0 4px 0;">Tổng quan & Thống kê điểm danh sinh viên</h1>
+            <p class="muted" id="todayLabel" style="margin: 0;">Đang tải...</p>
+        </div>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <a href="attendance.html" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 6px; text-decoration: none;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                Điểm danh Camera AI
+            </a>
+            <a href="attendance.html?open=rollcall" class="btn" style="display: inline-flex; align-items: center; gap: 6px; text-decoration: none; background: #e0e7ff; color: #3730a3; border: 1px solid #c7d2fe; font-weight: 600;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"></path><rect x="9" y="3" width="6" height="4" rx="2"></rect><path d="m9 14 2 2 4-4"></path></svg>
+                Sổ điểm danh Lớp
+            </a>
+            <a href="employees.html" class="btn" style="display: inline-flex; align-items: center; gap: 6px; text-decoration: none;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><line x1="19" y1="8" x2="19" y2="14"></line><line x1="22" y1="11" x2="16" y2="11"></line></svg>
+                Quản lý Sinh viên
+            </a>
+        </div>
+    </div>
+
+    <!-- Bộ lọc theo tiêu chí -->
+    <div class="card" style="margin-bottom: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+            <h3 style="margin: 0; font-size: 1.05em; color: #1f2937;">Bộ lọc thống kê & điểm danh</h3>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                <button type="button" class="btn btn-sm" id="btnPresetToday">Hôm nay</button>
+                <button type="button" class="btn btn-sm" id="btnPreset7Days">7 ngày qua</button>
+                <button type="button" class="btn btn-sm" id="btnPresetMonth">Tháng này</button>
+            </div>
+        </div>
+        <div class="filter-bar" style="margin-bottom: 0; align-items: flex-end;">
+            <label style="display: flex; flex-direction: column; font-size: 0.85em; color: #4b5563;">Từ ngày
+                <input type="date" id="dashFromDate">
+            </label>
+            <label style="display: flex; flex-direction: column; font-size: 0.85em; color: #4b5563;">Đến ngày
+                <input type="date" id="dashToDate">
+            </label>
+            <label style="display: flex; flex-direction: column; font-size: 0.85em; color: #4b5563;">Lớp học / Khoa
+                <select id="dashDeptSelect"><option value="">-- Tất cả Lớp / Khoa --</option></select>
+            </label>
+            <label style="display: flex; flex-direction: column; font-size: 0.85em; color: #4b5563;">Trạng thái
+                <select id="dashStatusSelect">
+                    <option value="">-- Tất cả trạng thái --</option>
+                    <option value="on_time">Đúng giờ (on_time)</option>
+                    <option value="late">Đi muộn (late)</option>
+                    <option value="early_leave">Về sớm (early_leave)</option>
+                    <option value="absent">Vắng mặt (absent)</option>
+                </select>
+            </label>
+            <label style="display: flex; flex-direction: column; font-size: 0.85em; color: #4b5563; flex: 1; min-width: 160px;">Tìm sinh viên
+                <input type="text" id="dashSearchInput" placeholder="Mã SV (MSSV) hoặc họ tên...">
+            </label>
+            <div style="display: flex; gap: 6px;">
+                <button id="btnApplyFilter" class="btn btn-primary">Lọc</button>
+                <button id="btnResetFilter" class="btn">Đặt lại</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Thanh tỷ lệ chuyên cần trực quan sinh động -->
+    <div class="card" id="cardAttendanceRate" style="margin-bottom: 20px; padding: 18px 22px; background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); border: 1px solid #e2e8f0;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+            <div>
+                <span style="font-weight: 700; font-size: 1.05em; color: #1e293b;">Tỷ lệ chuyên cần sinh viên</span>
+                <span class="muted" style="font-size: 0.85em; margin-left: 8px;" id="rateSubtitle">(Số sinh viên có mặt / tổng sĩ số trong khoảng lọc)</span>
+            </div>
+            <div style="font-size: 1.5em; font-weight: 800; color: #10b981;" id="attendanceRatePercent">0%</div>
+        </div>
+        <div style="background: #e2e8f0; height: 14px; border-radius: 999px; overflow: hidden; display: flex; box-shadow: inset 0 1px 2px rgba(0,0,0,0.06);">
+            <div id="barOnTime" style="background: #10b981; width: 0%; transition: width 0.6s ease;" title="Đúng giờ"></div>
+            <div id="barLate" style="background: #f59e0b; width: 0%; transition: width 0.6s ease;" title="Đi muộn"></div>
+            <div id="barEarly" style="background: #fbbf24; width: 0%; transition: width 0.6s ease;" title="Về sớm"></div>
+            <div id="barAbsent" style="background: #ef4444; width: 0%; transition: width 0.6s ease;" title="Vắng mặt"></div>
+        </div>
+        <div style="display: flex; gap: 16px; margin-top: 10px; font-size: 0.82em; color: #64748b; flex-wrap: wrap;">
+            <span style="display: inline-flex; align-items: center; gap: 5px;"><span style="width: 10px; height: 10px; border-radius: 2px; background: #10b981;"></span> Đúng giờ: <strong id="lblOnTimeCount" style="color: #0f172a;">0</strong></span>
+            <span style="display: inline-flex; align-items: center; gap: 5px;"><span style="width: 10px; height: 10px; border-radius: 2px; background: #f59e0b;"></span> Đi muộn: <strong id="lblLateCount" style="color: #0f172a;">0</strong></span>
+            <span style="display: inline-flex; align-items: center; gap: 5px;"><span style="width: 10px; height: 10px; border-radius: 2px; background: #fbbf24;"></span> Về sớm: <strong id="lblEarlyCount" style="color: #0f172a;">0</strong></span>
+            <span style="display: inline-flex; align-items: center; gap: 5px;"><span style="width: 10px; height: 10px; border-radius: 2px; background: #ef4444;"></span> Vắng mặt: <strong id="lblAbsentCount" style="color: #0f172a;">0</strong></span>
+        </div>
+    </div>
+
+    <!-- Thống kê tổng quan (Bấm vào thẻ để lọc danh sách tương ứng bên dưới) -->
+    <div class="grid grid-stats">
+        <div class="card stat stat-clickable" id="cardStatActive" data-status="" title="Bấm để xem tất cả sinh viên / điểm danh">
+            <div class="stat-label">Sinh viên (Đang học)</div>
+            <div class="stat-value" id="statActive">-</div>
+        </div>
+        <div class="card stat stat-green stat-clickable" id="cardStatOnTime" data-status="on_time" title="Bấm để lọc danh sách đúng giờ">
+            <div class="stat-label">Đúng giờ</div>
+            <div class="stat-value" id="statOnTime">-</div>
+        </div>
+        <div class="card stat stat-amber stat-clickable" id="cardStatLate" data-status="late" title="Bấm để lọc danh sách đi muộn">
+            <div class="stat-label">Đi muộn</div>
+            <div class="stat-value" id="statLate">-</div>
+        </div>
+        <div class="card stat stat-amber stat-clickable" id="cardStatEarlyLeave" data-status="early_leave" title="Bấm để lọc danh sách về sớm">
+            <div class="stat-label">Về sớm</div>
+            <div class="stat-value" id="statEarlyLeave">-</div>
+        </div>
+        <div class="card stat stat-red stat-clickable" id="cardStatAbsent" data-status="absent" title="Bấm để lọc danh sách vắng mặt">
+            <div class="stat-label">Vắng mặt</div>
+            <div class="stat-value" id="statAbsent">-</div>
+        </div>
+    </div>
+
+    <!-- Danh sách chi tiết điểm danh theo bộ lọc -->
+    <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+            <div>
+                <h2 id="recentTableTitle" style="margin: 0; font-size: 1.2em;">Chi tiết hoạt động điểm danh sinh viên</h2>
+                <div class="muted" style="font-size: 0.85em;" id="selectedDateSub">Danh sách điểm danh theo điều kiện lọc</div>
+            </div>
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <button type="button" class="btn btn-sm" id="btnExportCSV" style="display: inline-flex; align-items: center; gap: 4px; font-weight: 600;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                    Xuất CSV
+                </button>
+                <span class="badge badge-active" id="recentTableCount">0 bản ghi</span>
+            </div>
+        </div>
+        <div style="overflow-x: auto;">
+            <table class="table" id="recentTable">
+                <thead>
+                    <tr>
+                        <th>Ngày</th>
+                        <th>MSSV</th>
+                        <th>Họ tên sinh viên</th>
+                        <th>Lớp học / Khoa</th>
+                        <th>Ca / Tiết học</th>
+                        <th>Giờ vào</th>
+                        <th>Giờ ra</th>
+                        <th>Trạng thái</th>
+                        <th>Độ tin cậy</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+</main>
+
+<script src="js/api.js?v=2.6"></script>
+<script src="js/dashboard.js?v=2.6"></script>
+</body>
+</html>
