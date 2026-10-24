@@ -1,10 +1,10 @@
-# HƯỚNG DẪN TRIỂN KHAI HỆ THỐNG ĐIỂM DANH SINH VIÊN (ATTENDANCE) TRÊN MÁY ẢO UBUNTU SERVER
+# HƯỚNG DẪN TRIỂN KHAI HỆ THỐNG QUẢN LÝ SINH VIÊN TRÊN MÁY ẢO UBUNTU SERVER
 
 > **Môn học:** Triển khai và Quản trị Hệ thống Phần mềm  
-> **Đề tài:** Đề 27 — Hệ thống Điểm danh Sinh viên (Trường ĐH CNTT & Truyền thông - ICTU)  
-> **Sinh viên thực hiện:** DTC245160039  
-> **Email:** dtc245160039@ictu.edu.vn  
-> **GitHub:** [dtc245160039-max/dtc245160039-De27-HeThongDiemDanh](https://github.com/dtc245160039-max/dtc245160039-De27-HeThongDiemDanh)  
+> **Đề tài:** Đề 2 — Hệ thống Quản lý Sinh viên (Trường ĐH CNTT & Truyền thông - ICTU)  
+> **Sinh viên thực hiện:** DTC245180012  
+> **Email:** dtc245180012@ictu.edu.vn  
+> **GitHub:** [dtc245180012-svg/De2-QuanLySinhVien](https://github.com/dtc245180012-svg/De2-QuanLySinhVien)  
 > **Môi trường triển khai:** Máy ảo Ubuntu Server (22.04 LTS hoặc 24.04 LTS)  
 > **Công nghệ cốt lõi:** Docker, Docker Compose, Nginx, Node.js, MySQL 8.0, phpMyAdmin, Prometheus, Grafana, Loki + Promtail  
 
@@ -193,14 +193,14 @@ docker compose version
 ### Cách 1: Clone trực tiếp từ GitHub cá nhân (Khuyến nghị chuẩn đề bài)
 ```bash
 cd ~
-git clone https://github.com/dtc245160039-max/dtc245160039-De27-HeThongDiemDanh.git
-cd dtc245160039-De27-HeThongDiemDanh
+git clone https://github.com/dtc245180012-svg/De2-QuanLySinhVien.git
+cd De2-QuanLySinhVien
 ```
 
 ### Cách 2: Copy thư mục dự án từ máy tính thật Windows sang Ubuntu (qua SCP)
 Mở PowerShell trên máy Windows, điều hướng đến thư mục chứa dự án và chạy:
 ```powershell
-scp -r "d:\Du An\De27-DiemDanhSinhVien" <ten_user_ubuntu>@<IP_UBUNTU>:~/dtc245160039-De27-HeThongDiemDanh
+scp -r "d:\Du An\De27-DiemDanhSinhVien" <ten_user_ubuntu>@<IP_UBUNTU>:~/De2-QuanLySinhVien
 ```
 
 ### Cách 3: Chuyển toàn bộ code bằng phần mềm FileZilla (Trực quan, kéo thả dễ nhất)
@@ -210,11 +210,11 @@ scp -r "d:\Du An\De27-DiemDanhSinhVien" <ten_user_ubuntu>@<IP_UBUNTU>:~/dtc24516
    - **Host:** `sftp://<IP_UBUNTU>`
    - **Username / Password:** Tài khoản đăng nhập máy ảo Ubuntu
    - **Port:** `22`
-3. Kéo toàn bộ thư mục dự án bên trái thả sang `/home/<user>/dtc245160039-De27-HeThongDiemDanh` bên phải.
+3. Kéo toàn bộ thư mục dự án bên trái thả sang `/home/<user>/De2-QuanLySinhVien` bên phải.
 
 Sau đó trên Ubuntu:
 ```bash
-cd ~/dtc245160039-De27-HeThongDiemDanh
+cd ~/De2-QuanLySinhVien
 ```
 
 ### 3.1. Phân quyền thực thi cho các file script
@@ -409,7 +409,7 @@ Từ trình duyệt của máy tính trạm cùng mạng LAN, mở các địa c
 
 ## Bước 8: Kế hoạch 3 Commit Git chuẩn để nộp bài đạt điểm tối đa
 
-Để đạt trọn vẹn **1.5 điểm tiêu chí Quản lý mã nguồn trên GitHub** (yêu cầu ít nhất 3 commit rõ ràng và có ý nghĩa mang tên `dtc245160039-max`), sinh viên thực hiện commit theo trình tự sau:
+Để đạt trọn vẹn **1.5 điểm tiêu chí Quản lý mã nguồn trên GitHub** (yêu cầu ít nhất 3 commit rõ ràng và có ý nghĩa mang tên `dtc245180012-svg`), sinh viên thực hiện commit theo trình tự sau:
 
 ### Commit 1: Khởi tạo ứng dụng, CSDL MySQL 8.0, phpMyAdmin và Nginx Reverse Proxy
 ```bash
@@ -435,7 +435,7 @@ git commit -m "feat(logging): central logging with Loki and Promtail, LogQL quer
 
 Đẩy toàn bộ lên GitHub:
 ```bash
-git remote set-url origin https://github.com/dtc245160039-max/dtc245160039-De27-HeThongDiemDanh.git
+git remote set-url origin https://github.com/dtc245180012-svg/De2-QuanLySinhVien.git
 git push -u origin main
 ```
 
@@ -464,7 +464,7 @@ crontab -e
 ```
 Thêm dòng sau vào cuối file:
 ```cron
-0 2 * * * /bin/bash /home/ubuntu/dtc245160039-De27-HeThongDiemDanh/scripts/backup_db.sh >> /var/log/attendance_backup.log 2>&1
+0 2 * * * /bin/bash /home/ubuntu/De2-QuanLySinhVien/scripts/backup_db.sh >> /var/log/attendance_backup.log 2>&1
 ```
 
 ### 11.4. Kiểm tra tài nguyên tiêu thụ của các container
@@ -474,4 +474,4 @@ docker stats
 Lệnh này hiển thị phần trăm CPU, lượng RAM đang dùng của từng container theo thời gian thực để đảm bảo máy chủ không bị quá tải.
 
 ---
-*(Tài liệu này được lưu trữ phục vụ việc triển khai thực hành và nghiệm thu đề tài môn Triển khai và Quản trị Hệ thống Phần mềm — Đề 27: DTC245160039).*
+*(Tài liệu này được lưu trữ phục vụ việc triển khai thực hành và nghiệm thu đề tài môn Triển khai và Quản trị Hệ thống Phần mềm — Đề 27: DTC245180012).*

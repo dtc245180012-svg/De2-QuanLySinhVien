@@ -3,7 +3,7 @@
 """
 Script: import_students_excel.py
 Mục đích: Đọc danh sách sinh viên từ file Excel (.xlsx, .xls) hoặc CSV
-          và nhập tự động vào hệ thống Điểm danh (Đề 27) - DTC245160039.
+          và nhập tự động vào hệ thống Quản Lý Sinh Viên (Đề 2) - DTC245180012 (Ngô Hoàng Lan).
 Sử dụng:
     python scripts/import_students_excel.py <duong_dan_file_excel> [--api-url http://localhost:3000] [--default-class "CNTT K24A"]
 """

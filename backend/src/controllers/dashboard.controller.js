@@ -5,13 +5,22 @@ const { pool } = require('../config/db');
 const { logger } = require('../config/logger');
 const { syncExpiredLeaves } = require('./employee.controller');
 
+function getVietnamDateStr() {
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Ho_Chi_Minh',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+    });
+    return formatter.format(new Date());
+}
+
 async function overview(req, res) {
     try {
         await syncExpiredLeaves();
         const { from, to, department_id, status, search, cal_month } = req.query;
 
-        const localNow = new Date(Date.now() + 7 * 60 * 60 * 1000);
-        const todayStr = localNow.toISOString().slice(0, 10);
+        const todayStr = getVietnamDateStr();
 
         const startDate = from || todayStr;
         const endDate = to || todayStr;
@@ -43,9 +52,9 @@ async function overview(req, res) {
 
         const statSql = `
             SELECT
-                COALESCE(SUM(CASE WHEN check_in_status = 'on_time' OR (check_in_status IS NULL AND status IN ('on_time', 'early_leave')) THEN 1 ELSE 0 END), 0) AS on_time,
-                COALESCE(SUM(CASE WHEN check_in_status = 'late' OR (check_in_status IS NULL AND status = 'late')) THEN 1 ELSE 0 END), 0) AS late,
-                COALESCE(SUM(CASE WHEN check_out_status = 'early_leave' OR (check_out_status IS NULL AND status = 'early_leave')) THEN 1 ELSE 0 END), 0) AS early_leave,
+                COALESCE(SUM(CASE WHEN status != 'absent' AND (check_in_status = 'on_time' OR (check_in_status IS NULL AND status IN ('on_time', 'early_leave'))) THEN 1 ELSE 0 END), 0) AS on_time,
+                COALESCE(SUM(CASE WHEN check_in_status = 'late' OR (check_in_status IS NULL AND status = 'late') THEN 1 ELSE 0 END), 0) AS late,
+                COALESCE(SUM(CASE WHEN check_out_status = 'early_leave' OR (check_out_status IS NULL AND status = 'early_leave') THEN 1 ELSE 0 END), 0) AS early_leave,
                 COALESCE(SUM(CASE WHEN status = 'absent' OR check_in_status = 'absent' THEN 1 ELSE 0 END), 0) AS absent,
                 COUNT(*) AS total
             FROM (
@@ -85,7 +94,7 @@ async function overview(req, res) {
 
         let calSql = `
             SELECT DATE_FORMAT(a.date, '%Y-%m-%d') AS date,
-                   COALESCE(SUM(CASE WHEN a.check_in_status = 'on_time' OR (a.check_in_status IS NULL AND a.status IN ('on_time', 'early_leave')) THEN 1 ELSE 0 END), 0) AS on_time,
+                   COALESCE(SUM(CASE WHEN a.status != 'absent' AND (a.check_in_status = 'on_time' OR (a.check_in_status IS NULL AND a.status IN ('on_time', 'early_leave'))) THEN 1 ELSE 0 END), 0) AS on_time,
                    COALESCE(SUM(CASE WHEN a.check_in_status = 'late' OR (a.check_in_status IS NULL AND a.status = 'late') THEN 1 ELSE 0 END), 0) AS late,
                    COALESCE(SUM(CASE WHEN a.check_out_status = 'early_leave' OR (a.check_out_status IS NULL AND a.status = 'early_leave') THEN 1 ELSE 0 END), 0) AS early_leave,
                    COALESCE(SUM(CASE WHEN a.status = 'absent' OR a.check_in_status = 'absent' THEN 1 ELSE 0 END), 0) AS absent,

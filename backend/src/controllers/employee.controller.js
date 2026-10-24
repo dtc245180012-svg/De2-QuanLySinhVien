@@ -43,7 +43,7 @@ async function syncExpiredLeaves() {
 }
 
 async function list(req, res) {
-    const { search = '', department_id, status = 'active', limit = 50, offset = 0 } = req.query;
+    const { search = '', department_id, status = 'active', limit = 500, offset = 0 } = req.query;
     try {
         await syncExpiredLeaves();
         const params = [];
@@ -75,7 +75,7 @@ async function list(req, res) {
             FROM employees e
             LEFT JOIN departments d ON d.id = e.department_id
             ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
-            ORDER BY e.id DESC
+            ORDER BY SUBSTRING_INDEX(TRIM(e.full_name), ' ', -1) ASC, e.full_name ASC, e.employee_code ASC
             LIMIT ? OFFSET ?
         `;
         const r = await pool.query(sql, params);
@@ -180,7 +180,7 @@ async function create(req, res) {
 
 async function update(req, res) {
     const id = parseInt(req.params.id, 10);
-    const { full_name, email, phone, department_id, position, status, work_start, work_end, shift_name, leave_start, leave_end } = req.body;
+    const { full_name, email, phone, department_id, position, hire_date, status, work_start, work_end, shift_name, leave_start, leave_end } = req.body;
     const file = req.file;
     try {
         let embedding = null;
@@ -216,6 +216,7 @@ async function update(req, res) {
                 phone           = COALESCE(?, phone),
                 department_id   = COALESCE(?, department_id),
                 position        = COALESCE(?, position),
+                hire_date       = COALESCE(?, hire_date),
                 status          = COALESCE(?, status),
                 work_start      = COALESCE(?, work_start),
                 work_end        = COALESCE(?, work_end),
@@ -227,7 +228,7 @@ async function update(req, res) {
             WHERE id = ?`,
             [
                 full_name || null, email || null, phone || null,
-                department_id ? parseInt(department_id, 10) : null, position || null, status || null,
+                department_id ? parseInt(department_id, 10) : null, position || null, hire_date || null, status || null,
                 work_start || null, work_end || null, shift_name || null,
                 embedding ? JSON.stringify(embedding) : null, facePath || null,
                 status || null, status || null, leaveStartVal,

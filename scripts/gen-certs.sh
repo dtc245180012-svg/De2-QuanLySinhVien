@@ -15,6 +15,6 @@ openssl req -x509 -nodes -days 365 \
     -newkey rsa:2048 \
     -keyout "$DIR/server.key" \
     -out    "$DIR/server.crt" \
-    -subj   "/C=VN/ST=TN/L=ThaiNguyen/O=DTC245160039/OU=De27-HeThongDiemDanh/CN=${DOMAIN}" \
+    -subj   "/C=VN/ST=TN/L=ThaiNguyen/O=DTC245180012/OU=De2-QuanLySinhVien/CN=${DOMAIN}" \
     -addext "subjectAltName=DNS:${DOMAIN},DNS:*.${DOMAIN},IP:127.0.0.1"
 echo "[gen-certs] Generated $DIR/server.crt + server.key for ${DOMAIN}"

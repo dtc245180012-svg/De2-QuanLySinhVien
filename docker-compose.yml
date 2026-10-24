@@ -1,7 +1,7 @@
 version: "3.9"
 
 # ============================================================================
-#  De 27: He Thong Diem Danh / Attendance (DTC245160039)
+#  De 02: He Thong Quan Ly Sinh Vien (DTC245180012 - Ngo Hoang Lan)
 #  Stack: Node.js + Python (AI) + MySQL 8.0 + phpMyAdmin + Nginx
 #  All services run as non-root users; isolated via 3 networks.
 # ============================================================================

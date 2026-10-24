@@ -52,8 +52,8 @@
             <h2 id="attHistoryTitle" style="margin: 0;">Lịch sử điểm danh sinh viên gần đây</h2>
             <div style="display: flex; gap: 8px; align-items: center;">
                 <button id="btnManualCheckModal" class="btn btn-primary" style="display: none; align-items: center; gap: 6px; font-weight: 600;">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-                    + Điểm danh thủ công
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                    Sổ điểm danh theo Lớp
                 </button>
                 <button id="btnReloadAtt" class="btn btn-sm">Tải lại</button>
             </div>
@@ -74,43 +74,87 @@
     </div>
 </main>
 
-<!-- Modal Điểm danh thủ công (Dành cho Giáo viên / Quản trị viên) -->
-<div class="modal" id="manualCheckModal" hidden>
-    <div class="modal-card" style="width: 480px; max-width: 95vw;">
-        <div class="modal-header">
-            <h2>Điểm danh thủ công (Giáo viên / Giáo vụ)</h2>
+<!-- Modal Sổ điểm danh theo Lớp (Dành cho Giáo viên / Quản trị viên) -->
+<div class="modal" id="manualCheckModal">
+    <div class="modal-card" style="width: 880px; max-width: 96vw; max-height: 92vh; display: flex; flex-direction: column; padding: 22px;">
+        <div class="modal-header" style="margin-bottom: 12px; padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <div style="width: 36px; height: 36px; border-radius: 8px; background: #eff6ff; display: flex; align-items: center; justify-content: center; color: #2563eb;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                </div>
+                <div>
+                    <h2 style="font-size: 1.2em; font-weight: 700; color: #1e293b; margin: 0;">Sổ điểm danh theo Lớp học</h2>
+                    <p style="font-size: 0.85em; color: #64748b; margin: 2px 0 0 0;">Giáo viên tích chọn Có mặt / Vắng cho từng sinh viên trong lớp</p>
+                </div>
+            </div>
             <button type="button" class="btn-close" id="btnCloseManualModal">&times;</button>
         </div>
-        <form id="manualCheckForm">
-            <label>Lọc theo Lớp học
-                <select id="manualDeptSelect">
-                    <option value="">-- Tất cả các lớp --</option>
+
+        <!-- Filter bar -->
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; background: #f8fafc; padding: 12px 14px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 12px;">
+            <div style="display: flex; align-items: center; gap: 10px; flex: 1; min-width: 260px;">
+                <label style="margin: 0; font-weight: 600; color: #334155; white-space: nowrap;">Chọn Lớp:</label>
+                <select id="manualDeptSelect" style="flex: 1; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: 600; font-size: 0.95em;">
+                    <option value="">-- Đang tải danh sách lớp... --</option>
                 </select>
-            </label>
-            <label>Chọn Sinh viên <span class="req" style="color:red">*</span>
-                <select id="manualEmpSelect" required>
-                    <option value="">-- Đang tải danh sách sinh viên... --</option>
-                </select>
-            </label>
-            <label>Loại điểm danh <span class="req" style="color:red">*</span>
-                <select id="manualTypeSelect" required>
-                    <option value="in">Điểm danh vào lớp (Check-in)</option>
-                    <option value="out">Điểm danh ra về / Kết thúc ca (Check-out)</option>
-                </select>
-            </label>
-            <label>Ghi chú lý do
-                <input id="manualNoteInput" placeholder="VD: Quên quẹt mặt, Học bù, Camera mờ...">
-            </label>
-            <div class="modal-actions" style="margin-top: 18px;">
-                <button type="button" id="btnCancelManual" class="btn">Hủy bỏ</button>
-                <button type="submit" class="btn btn-primary" id="btnSubmitManual">Xác nhận Điểm danh</button>
             </div>
-            <p id="manualCheckError" class="error" hidden style="margin-top: 10px;"></p>
-        </form>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <input type="text" id="manualSearchStudent" placeholder="🔍 Tìm tên hoặc MSSV..." style="padding: 7px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.9em; width: 200px;">
+            </div>
+        </div>
+
+        <!-- Quick actions & Stats -->
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; padding: 0 4px;">
+            <div id="rollCallStats" style="font-size: 0.92em; font-weight: 600; color: #475569;">
+                Sĩ số: <span id="statTotal" style="color: #2563eb; font-weight: 700;">0</span> sinh viên &nbsp;|&nbsp; 
+                <span style="color: #16a34a;">Có mặt: <b id="statPresent">0</b></span> &nbsp;|&nbsp; 
+                <span style="color: #dc2626;">Vắng mặt: <b id="statAbsent">0</b></span>
+            </div>
+            <div style="display: flex; gap: 6px;">
+                <button type="button" id="btnMarkAllPresent" class="btn btn-sm" style="background: #dcfce7; color: #15803d; border: 1px solid #86efac; font-weight: 600; cursor: pointer;">
+                    ✓ Tất cả Có mặt
+                </button>
+                <button type="button" id="btnMarkAllAbsent" class="btn btn-sm" style="background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; font-weight: 600; cursor: pointer;">
+                    ✗ Tất cả Vắng
+                </button>
+            </div>
+        </div>
+
+        <!-- Student Roll Call Table -->
+        <div style="flex: 1; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 8px; min-height: 280px; max-height: 48vh; background: #fff;">
+            <table class="table" style="margin: 0; width: 100%; font-size: 0.92em;">
+                <thead style="position: sticky; top: 0; background: #f1f5f9; z-index: 2; border-bottom: 2px solid #cbd5e1;">
+                    <tr>
+                        <th style="width: 48px; text-align: center;">STT</th>
+                        <th style="width: 140px;">MSSV</th>
+                        <th>Họ và tên</th>
+                        <th style="width: 200px; text-align: center;">Điểm danh</th>
+                        <th style="width: 170px;">Ghi chú</th>
+                    </tr>
+                </thead>
+                <tbody id="rollCallStudentList">
+                    <tr><td colspan="5" style="text-align: center; color: #64748b; padding: 36px;">Vui lòng chọn một lớp học ở trên để hiển thị danh sách sinh viên.</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <p id="manualCheckError" class="error" hidden style="margin-top: 10px;"></p>
+        <div id="manualCheckProgress" style="display: none; margin-top: 10px; font-weight: 600; color: #2563eb; font-size: 0.92em;">
+            Đang lưu điểm danh: <span id="progressText">0/0</span> sinh viên...
+        </div>
+
+        <!-- Footer Actions -->
+        <div class="modal-actions" style="margin-top: 14px; padding-top: 12px; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 10px;">
+            <button type="button" id="btnCancelManual" class="btn">Đóng</button>
+            <button type="button" id="btnSubmitRollCall" class="btn btn-primary" style="padding: 9px 22px; font-weight: 700; background: #2563eb; display: flex; align-items: center; gap: 6px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                Lưu bảng điểm danh lớp
+            </button>
+        </div>
     </div>
 </div>
 
-<script src="js/api.js?v=2.2"></script>
-<script src="js/attendance.js?v=2.4"></script>
+<script src="js/api.js?v=2.6"></script>
+<script src="js/attendance.js?v=2.6"></script>
 </body>
 </html>

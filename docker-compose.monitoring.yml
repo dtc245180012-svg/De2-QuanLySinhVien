@@ -1,7 +1,7 @@
 version: "3.9"
 
 # ============================================================================
-#  De 27: He Thong Diem Danh - Monitoring & Logging overlay (DTC245160039)
+#  De 02: He Thong Quan Ly Sinh Vien - Monitoring & Logging overlay (DTC245180012 - Ngo Hoang Lan)
 #  Usage: docker compose -f docker-compose.yml -f docker-compose.monitoring.yml up -d
 # ============================================================================
 

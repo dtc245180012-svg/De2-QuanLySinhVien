@@ -185,11 +185,45 @@
             }
 
             // Cập nhật giá trị thẻ thống kê (đồng bộ theo đúng khoảng thời gian lọc)
-            statActiveVal.textContent     = d.employees.active_employees;
-            statOnTimeVal.textContent     = d.today_stats.on_time;
-            statLateVal.textContent       = d.today_stats.late;
-            statEarlyLeaveVal.textContent = d.today_stats.early_leave;
-            statAbsentVal.textContent     = d.today_stats.absent;
+            const onTimeNum    = parseInt(d.today_stats.on_time || 0, 10);
+            const lateNum      = parseInt(d.today_stats.late || 0, 10);
+            const earlyNum     = parseInt(d.today_stats.early_leave || 0, 10);
+            const absentNum    = parseInt(d.today_stats.absent || 0, 10);
+            const activeEmpNum = parseInt(d.employees.active_employees || 0, 10);
+
+            statActiveVal.textContent     = activeEmpNum;
+            statOnTimeVal.textContent     = onTimeNum;
+            statLateVal.textContent       = lateNum;
+            statEarlyLeaveVal.textContent = earlyNum;
+            statAbsentVal.textContent     = absentNum;
+
+            // Cập nhật thanh tỷ lệ chuyên cần trực quan
+            const totalAtt = onTimeNum + lateNum + earlyNum + absentNum;
+            const presentNum = onTimeNum + lateNum + earlyNum;
+            const ratePercent = totalAtt > 0 ? Math.round((presentNum / totalAtt) * 100) : 0;
+            const ratePercentEl = document.getElementById('attendanceRatePercent');
+            if (ratePercentEl) {
+                ratePercentEl.textContent = `${ratePercent}%`;
+                ratePercentEl.style.color = ratePercent >= 80 ? '#10b981' : (ratePercent >= 50 ? '#f59e0b' : '#ef4444');
+            }
+            if (totalAtt > 0) {
+                const bOnTime = document.getElementById('barOnTime');
+                const bLate   = document.getElementById('barLate');
+                const bEarly  = document.getElementById('barEarly');
+                const bAbsent = document.getElementById('barAbsent');
+                if (bOnTime) bOnTime.style.width = `${(onTimeNum / totalAtt) * 100}%`;
+                if (bLate)   bLate.style.width   = `${(lateNum / totalAtt) * 100}%`;
+                if (bEarly)  bEarly.style.width  = `${(earlyNum / totalAtt) * 100}%`;
+                if (bAbsent) bAbsent.style.width = `${(absentNum / totalAtt) * 100}%`;
+            }
+            const lOnTime = document.getElementById('lblOnTimeCount');
+            const lLate   = document.getElementById('lblLateCount');
+            const lEarly  = document.getElementById('lblEarlyCount');
+            const lAbsent = document.getElementById('lblAbsentCount');
+            if (lOnTime) lOnTime.textContent = onTimeNum;
+            if (lLate)   lLate.textContent   = lateNum;
+            if (lEarly)  lEarly.textContent  = earlyNum;
+            if (lAbsent) lAbsent.textContent = absentNum;
 
             // Đồng bộ trạng thái active của các thẻ
             syncCardActiveState(d.filter.status);
@@ -197,6 +231,21 @@
             // Bảng danh sách chi tiết bên dưới
             recBody.innerHTML = '';
             const actList = d.recent || [];
+            
+            // Sắp xếp danh sách chi tiết: Ngày giảm dần, sau đó theo Tên sinh viên (A-Z)
+            actList.sort((a, b) => {
+                if (a.date !== b.date) return (b.date || '').localeCompare(a.date || '');
+                const nameA = (a.full_name || '').trim();
+                const nameB = (b.full_name || '').trim();
+                const partsA = nameA.split(/\s+/);
+                const partsB = nameB.split(/\s+/);
+                const firstNameA = partsA[partsA.length - 1] || '';
+                const firstNameB = partsB[partsB.length - 1] || '';
+                const cmp = firstNameA.localeCompare(firstNameB, 'vi', { sensitivity: 'base' });
+                if (cmp !== 0) return cmp;
+                return (a.employee_code || '').localeCompare(b.employee_code || '');
+            });
+
             currentActList = actList;
             recentTableCount.textContent = `${actList.length} bản ghi`;
 
@@ -260,6 +309,9 @@
             }
         } catch (err) {
             console.error('Lỗi tải dashboard', err);
+            const todayLabelEl = document.getElementById('todayLabel');
+            if (todayLabelEl) todayLabelEl.textContent = 'Lỗi tải dữ liệu: ' + (err.message || 'Không thể kết nối');
+            if (recBody) recBody.innerHTML = `<tr><td colspan="9" class="error text-center" style="padding:28px; color: #dc2626;">Lỗi tải dữ liệu: ${escapeHtml(err.message || 'Không rõ lỗi')}</td></tr>`;
         }
     }
 

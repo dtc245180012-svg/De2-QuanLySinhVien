@@ -284,20 +284,42 @@
                     return;
                 }
 
-                // Nhận diện cột thông minh (hỗ trợ nhiều định dạng header khác nhau)
+                // Nhận diện cột thông minh (hỗ trợ cả cột Tên tách biệt như file KHMT K23A và cột Họ tên gộp như KTPM K23A)
                 parsedStudents = rawJson.map((row, idx) => {
                     const keys = Object.keys(row);
-                    const findVal = (keywords) => {
-                        const k = keys.find(key => keywords.some(kw => key.toLowerCase().includes(kw)));
-                        return k ? String(row[k]).trim() : '';
-                    };
+                    const findKey = (keywords) => keys.find(key => {
+                        const lk = key.toLowerCase().trim();
+                        return keywords.some(kw => lk === kw || lk.includes(kw));
+                    });
 
-                    const code = findVal(['mã', 'mssv', 'code', 'masv']) || `SV${String(idx + 1).padStart(3, '0')}`;
-                    const name = findVal(['họ', 'tên', 'name', 'sinh viên']) || `Sinh viên ${idx + 1}`;
-                    const dept = findVal(['lớp', 'khoa', 'phòng', 'class', 'dept']) || 'Lớp Công nghệ Thông tin K24A (CNTT K24A)';
-                    const email = findVal(['email', 'mail']) || `${code.toLowerCase()}@ictu.edu.vn`;
-                    const phone = findVal(['phone', 'điện thoại', 'sđt', 'tel']) || '';
-                    const role = findVal(['chức', 'vụ', 'vai trò', 'position']) || 'Sinh viên';
+                    const codeKey = findKey(['mã sinh viên', 'mssv', 'masv', 'mã sv', 'code']) || findKey(['mã']);
+                    const code = (codeKey && row[codeKey]) ? String(row[codeKey]).trim() : `SV${String(idx + 1).padStart(3, '0')}`;
+
+                    const nameKey = findKey(['họ và tên', 'họ tên', 'họ đệm', 'họ lót', 'họ']) ||
+                                    keys.find(k => k !== codeKey && !k.toLowerCase().includes('mã') && (k.toLowerCase().includes('tên') || k.toLowerCase().includes('name')));
+                    let name = (nameKey && row[nameKey]) ? String(row[nameKey]).trim() : '';
+
+                    // Kiểm tra xem có cột Tên riêng kế bên không (ví dụ __EMPTY hoặc Tên riêng)
+                    const firstNameKey = keys.find(k => k === '__EMPTY' || (/^(tên|ten)$/i.test(k.trim())));
+                    if (firstNameKey && row[firstNameKey] && String(row[firstNameKey]).trim()) {
+                        const fnVal = String(row[firstNameKey]).trim();
+                        if (!name.endsWith(fnVal)) {
+                            name = (name + ' ' + fnVal).trim();
+                        }
+                    }
+                    if (!name) name = `Sinh viên ${idx + 1}`;
+
+                    const deptKey = findKey(['lớp', 'khoa/viện', 'khoa', 'phòng', 'class', 'dept']);
+                    const dept = (deptKey && row[deptKey]) ? String(row[deptKey]).trim() : 'Lớp Công nghệ Thông tin K24A (CNTT K24A)';
+
+                    const emailKey = findKey(['email', 'mail']);
+                    const email = (emailKey && row[emailKey]) ? String(row[emailKey]).trim() : `${code.toLowerCase()}@ictu.edu.vn`;
+
+                    const phoneKey = findKey(['phone', 'điện thoại', 'sđt', 'tel']);
+                    const phone = (phoneKey && row[phoneKey]) ? String(row[phoneKey]).trim() : '';
+
+                    const roleKey = findKey(['chức', 'vụ', 'vai trò', 'position']);
+                    const role = (roleKey && row[roleKey]) ? String(row[roleKey]).trim() : 'Sinh viên';
 
                     return { employee_code: code, full_name: name, department_name: dept, email, phone, position: role };
                 }).filter(s => s.employee_code && s.full_name);
@@ -386,13 +408,29 @@
     async function load() {
         try {
             const params = new URLSearchParams();
+            params.set('limit', '500');
             if (search.value.trim()) params.set('search', search.value.trim());
             if (deptFilt.value)      params.set('department_id', deptFilt.value);
             if (status.value)        params.set('status', status.value);
 
             const r = await API.get('/employees?' + params.toString());
+            const employees = r.data || [];
+            employees.sort((a, b) => {
+                const nameA = (a.full_name || '').trim();
+                const nameB = (b.full_name || '').trim();
+                const partsA = nameA.split(/\s+/);
+                const partsB = nameB.split(/\s+/);
+                const firstNameA = partsA[partsA.length - 1] || '';
+                const firstNameB = partsB[partsB.length - 1] || '';
+                const cmp = firstNameA.localeCompare(firstNameB, 'vi', { sensitivity: 'base' });
+                if (cmp !== 0) return cmp;
+                const cmpFull = nameA.localeCompare(nameB, 'vi', { sensitivity: 'base' });
+                if (cmpFull !== 0) return cmpFull;
+                return (a.employee_code || '').localeCompare(b.employee_code || '');
+            });
+
             tbody.innerHTML = '';
-            for (const e of r.data) {
+            for (const e of employees) {
                 const tr = document.createElement('tr');
                 const shiftLabel = `<span class="badge badge-shift">${API.escapeHtml(e.shift_name || 'Ca sáng (Tiết 1 - 4)')}</span>`;
                 

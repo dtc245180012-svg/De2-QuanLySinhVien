@@ -202,98 +202,305 @@
     const btnReloadAtt = document.getElementById('btnReloadAtt');
     if (btnReloadAtt) btnReloadAtt.addEventListener('click', loadMyHistory);
 
-    // --- DIEM DANH THU CONG (Admin / Giao vien) ---
-    const btnManualModal   = document.getElementById('btnManualCheckModal');
-    const manualModal      = document.getElementById('manualCheckModal');
-    const btnCloseManual   = document.getElementById('btnCloseManualModal');
-    const btnCancelManual  = document.getElementById('btnCancelManual');
-    const manualForm       = document.getElementById('manualCheckForm');
-    const manualDeptSelect = document.getElementById('manualDeptSelect');
-    const manualEmpSelect  = document.getElementById('manualEmpSelect');
-    const manualCheckError = document.getElementById('manualCheckError');
+    // --- SO DIEM DANH THEO LOP (Admin / Giao vien) ---
+    const btnManualModal    = document.getElementById('btnManualCheckModal');
+    const manualModal       = document.getElementById('manualCheckModal');
+    const btnCloseManual    = document.getElementById('btnCloseManualModal');
+    const btnCancelManual   = document.getElementById('btnCancelManual');
+    const manualDeptSelect  = document.getElementById('manualDeptSelect');
+    const manualSearchInput = document.getElementById('manualSearchStudent');
+    const studentListTbody  = document.getElementById('rollCallStudentList');
+    const statTotalEl       = document.getElementById('statTotal');
+    const statPresentEl     = document.getElementById('statPresent');
+    const statAbsentEl      = document.getElementById('statAbsent');
+    const btnMarkAllPresent = document.getElementById('btnMarkAllPresent');
+    const btnMarkAllAbsent  = document.getElementById('btnMarkAllAbsent');
+    const btnSubmitRollCall = document.getElementById('btnSubmitRollCall');
+    const manualCheckError  = document.getElementById('manualCheckError');
+    const manualProgress    = document.getElementById('manualCheckProgress');
+    const progressText      = document.getElementById('progressText');
 
     let allStudentsCache = [];
+    let currentClassStudents = [];
+    let studentStatusMap = {}; // empId -> { status: 'present'|'absent', note: '' }
 
     if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'hr')) {
         if (btnManualModal) btnManualModal.style.display = 'inline-flex';
 
-        async function loadManualData() {
+        async function loadRollCallClasses() {
             try {
-                const dRes = await API.get('/departments');
+                manualDeptSelect.innerHTML = '<option value="">-- Đang nạp danh sách lớp... --</option>';
+                const [dRes, eRes] = await Promise.all([
+                    API.get('/departments'),
+                    API.get('/employees?limit=500')
+                ]);
                 const depts = dRes.data || [];
-                manualDeptSelect.innerHTML = '<option value="">-- Tất cả các lớp --</option>' +
-                    depts.map(d => `<option value="${d.id}">${API.escapeHtml(d.name)}</option>`).join('');
-
-                const eRes = await API.get('/employees?limit=300');
                 allStudentsCache = eRes.data || [];
-                renderStudentOptions();
+
+                manualDeptSelect.innerHTML = '<option value="">-- Chọn lớp cần điểm danh --</option>' +
+                    depts.map(d => {
+                        const count = allStudentsCache.filter(s => String(s.department_id) === String(d.id)).length;
+                        return `<option value="${d.id}">${API.escapeHtml(d.name)} (${count} sinh viên)</option>`;
+                    }).join('');
+
+                if (depts.length > 0) {
+                    manualDeptSelect.value = depts[0].id;
+                    renderClassRollCall();
+                }
             } catch (err) {
-                console.error('Lỗi nạp danh sách điểm danh:', err);
+                console.error('Lỗi nạp danh sách lớp:', err);
+                manualDeptSelect.innerHTML = '<option value="">-- Lỗi tải danh sách lớp --</option>';
             }
         }
 
-        function renderStudentOptions() {
-            const selectedDept = manualDeptSelect.value;
-            const filtered = selectedDept
-                ? allStudentsCache.filter(s => String(s.department_id) === String(selectedDept))
-                : allStudentsCache;
+        function updateStats() {
+            let present = 0;
+            let absent = 0;
+            currentClassStudents.forEach(s => {
+                const state = studentStatusMap[s.id] || { status: 'present' };
+                if (state.status === 'present') present++;
+                else absent++;
+            });
+            statTotalEl.textContent = currentClassStudents.length;
+            statPresentEl.textContent = present;
+            statAbsentEl.textContent = absent;
+        }
 
-            if (filtered.length === 0) {
-                manualEmpSelect.innerHTML = '<option value="">-- Không có sinh viên nào --</option>';
+        function renderClassRollCall() {
+            const selectedDept = manualDeptSelect.value;
+            if (!selectedDept) {
+                currentClassStudents = [];
+                studentListTbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #64748b; padding: 36px;">Vui lòng chọn một lớp học ở trên để hiển thị danh sách sinh viên.</td></tr>';
+                updateStats();
                 return;
             }
 
-            manualEmpSelect.innerHTML = '<option value="">-- Chọn sinh viên --</option>' +
-                filtered.map(s => `<option value="${s.id}">[${API.escapeHtml(s.employee_code)}] ${API.escapeHtml(s.full_name)} (${API.escapeHtml(s.department_name || '')})</option>`).join('');
+            currentClassStudents = allStudentsCache.filter(s => String(s.department_id) === String(selectedDept));
+
+            // Sắp xếp danh sách sinh viên theo thứ tự Alphabet (A-Z) theo Tên tiếng Việt
+            currentClassStudents.sort((a, b) => {
+                const nameA = (a.full_name || '').trim();
+                const nameB = (b.full_name || '').trim();
+                const partsA = nameA.split(/\s+/);
+                const partsB = nameB.split(/\s+/);
+                const firstNameA = partsA[partsA.length - 1] || '';
+                const firstNameB = partsB[partsB.length - 1] || '';
+                const cmp = firstNameA.localeCompare(firstNameB, 'vi', { sensitivity: 'base' });
+                if (cmp !== 0) return cmp;
+                const cmpFull = nameA.localeCompare(nameB, 'vi', { sensitivity: 'base' });
+                if (cmpFull !== 0) return cmpFull;
+                return (a.employee_code || '').localeCompare(b.employee_code || '');
+            });
+
+            currentClassStudents.forEach(s => {
+                if (!studentStatusMap[s.id]) {
+                    studentStatusMap[s.id] = { status: 'present', note: '' };
+                }
+            });
+
+            applyFilterAndRender();
         }
 
-        manualDeptSelect.addEventListener('change', renderStudentOptions);
+        function applyFilterAndRender() {
+            const query = (manualSearchInput.value || '').trim().toLowerCase();
+            const filtered = query
+                ? currentClassStudents.filter(s => 
+                    (s.full_name && s.full_name.toLowerCase().includes(query)) ||
+                    (s.employee_code && s.employee_code.toLowerCase().includes(query))
+                  )
+                : currentClassStudents;
 
-        btnManualModal.addEventListener('click', async () => {
-            manualCheckError.hidden = true;
-            manualModal.hidden = false;
-            if (allStudentsCache.length === 0) {
-                await loadManualData();
+            updateStats();
+
+            if (filtered.length === 0) {
+                studentListTbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #64748b; padding: 30px;">Không tìm thấy sinh viên nào khớp với tìm kiếm.</td></tr>';
+                return;
+            }
+
+            studentListTbody.innerHTML = filtered.map((s, idx) => {
+                const cur = studentStatusMap[s.id] || { status: 'present', note: '' };
+                const isPresent = cur.status === 'present';
+                return `
+                    <tr data-emp-id="${s.id}">
+                        <td style="text-align: center; font-weight: 600; color: #64748b;">${idx + 1}</td>
+                        <td style="font-weight: 700; color: #1e293b;">${API.escapeHtml(s.employee_code)}</td>
+                        <td style="font-weight: 600; color: #0f172a;">${API.escapeHtml(s.full_name)}</td>
+                        <td style="text-align: center;">
+                            <div style="display: inline-flex; border-radius: 6px; overflow: hidden; border: 1px solid #cbd5e1; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                                <label style="cursor: pointer; padding: 5px 12px; font-weight: 600; font-size: 0.86em; margin: 0; background: ${isPresent ? '#dcfce7' : '#f8fafc'}; color: ${isPresent ? '#15803d' : '#64748b'}; transition: all 0.15s;" class="lbl-present">
+                                    <input type="radio" name="att_status_${s.id}" value="present" ${isPresent ? 'checked' : ''} style="margin-right: 4px; accent-color: #16a34a;"> Có mặt
+                                </label>
+                                <label style="cursor: pointer; padding: 5px 12px; font-weight: 600; font-size: 0.86em; margin: 0; background: ${!isPresent ? '#fee2e2' : '#f8fafc'}; color: ${!isPresent ? '#b91c1c' : '#64748b'}; border-left: 1px solid #cbd5e1; transition: all 0.15s;" class="lbl-absent">
+                                    <input type="radio" name="att_status_${s.id}" value="absent" ${!isPresent ? 'checked' : ''} style="margin-right: 4px; accent-color: #dc2626;"> Vắng
+                                </label>
+                            </div>
+                        </td>
+                        <td>
+                            <input type="text" class="student-note" data-emp-id="${s.id}" value="${API.escapeHtml(cur.note || '')}" placeholder="Ghi chú..." style="padding: 5px 10px; font-size: 0.88em; width: 100%; border: 1px solid #e2e8f0; border-radius: 4px;">
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        studentListTbody.addEventListener('change', (e) => {
+            if (e.target && e.target.type === 'radio') {
+                const tr = e.target.closest('tr');
+                if (!tr) return;
+                const empId = tr.dataset.empId;
+                if (!empId) return;
+
+                const val = e.target.value;
+                if (!studentStatusMap[empId]) studentStatusMap[empId] = { status: 'present', note: '' };
+                studentStatusMap[empId].status = val;
+
+                const lblPresent = tr.querySelector('.lbl-present');
+                const lblAbsent  = tr.querySelector('.lbl-absent');
+                if (val === 'present') {
+                    if (lblPresent) { lblPresent.style.background = '#dcfce7'; lblPresent.style.color = '#15803d'; }
+                    if (lblAbsent)  { lblAbsent.style.background = '#f8fafc';  lblAbsent.style.color = '#64748b'; }
+                } else {
+                    if (lblPresent) { lblPresent.style.background = '#f8fafc'; lblPresent.style.color = '#64748b'; }
+                    if (lblAbsent)  { lblAbsent.style.background = '#fee2e2';  lblAbsent.style.color = '#b91c1c'; }
+                }
+
+                updateStats();
             }
         });
 
-        const closeManualModal = () => { manualModal.hidden = true; manualForm.reset(); };
+        studentListTbody.addEventListener('input', (e) => {
+            if (e.target && e.target.classList.contains('student-note')) {
+                const empId = e.target.dataset.empId;
+                if (empId) {
+                    if (!studentStatusMap[empId]) studentStatusMap[empId] = { status: 'present', note: '' };
+                    studentStatusMap[empId].note = e.target.value.trim();
+                }
+            }
+        });
+
+        manualDeptSelect.addEventListener('change', () => {
+            manualSearchInput.value = '';
+            renderClassRollCall();
+        });
+
+        manualSearchInput.addEventListener('input', applyFilterAndRender);
+
+        btnMarkAllPresent.addEventListener('click', () => {
+            currentClassStudents.forEach(s => {
+                if (!studentStatusMap[s.id]) studentStatusMap[s.id] = { status: 'present', note: '' };
+                studentStatusMap[s.id].status = 'present';
+            });
+            applyFilterAndRender();
+        });
+
+        btnMarkAllAbsent.addEventListener('click', () => {
+            currentClassStudents.forEach(s => {
+                if (!studentStatusMap[s.id]) studentStatusMap[s.id] = { status: 'absent', note: '' };
+                studentStatusMap[s.id].status = 'absent';
+            });
+            applyFilterAndRender();
+        });
+
+        const openRollCallModal = async () => {
+            manualCheckError.hidden = true;
+            manualProgress.style.display = 'none';
+            manualModal.classList.add('open');
+            manualModal.style.display = 'flex';
+            if (allStudentsCache.length === 0) {
+                await loadRollCallClasses();
+            }
+        };
+
+        btnManualModal.addEventListener('click', openRollCallModal);
+
+        if (new URLSearchParams(location.search).get('open') === 'rollcall') {
+            setTimeout(openRollCallModal, 200);
+        }
+
+        const closeManualModal = () => { 
+            manualModal.classList.remove('open'); 
+            manualModal.style.display = 'none';
+        };
         if (btnCloseManual) btnCloseManual.addEventListener('click', closeManualModal);
         if (btnCancelManual) btnCancelManual.addEventListener('click', closeManualModal);
+        manualModal.addEventListener('click', (e) => {
+            if (e.target === manualModal) closeManualModal();
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && manualModal.classList.contains('open')) closeManualModal();
+        });
 
-        manualForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            manualCheckError.hidden = true;
-            const empId = manualEmpSelect.value;
-            const type = document.getElementById('manualTypeSelect').value;
-            const note = document.getElementById('manualNoteInput').value.trim();
-
-            if (!empId) {
-                manualCheckError.textContent = 'Vui lòng chọn một sinh viên!';
-                manualCheckError.hidden = false;
+        btnSubmitRollCall.addEventListener('click', async () => {
+            if (!currentClassStudents || currentClassStudents.length === 0) {
+                alert('Vui lòng chọn một lớp học có sinh viên trước khi lưu!');
                 return;
             }
 
-            const btnSubmit = document.getElementById('btnSubmitManual');
-            btnSubmit.disabled = true;
-            btnSubmit.textContent = 'Đang xử lý...';
+            manualCheckError.hidden = true;
+            btnSubmitRollCall.disabled = true;
+            btnSubmitRollCall.textContent = 'Đang lưu điểm danh...';
+            manualProgress.style.display = 'block';
+
+            const items = currentClassStudents.map(s => {
+                const state = studentStatusMap[s.id] || { status: 'present', note: '' };
+                return {
+                    employee_id: s.id,
+                    status: state.status,
+                    note: state.note || (state.status === 'present' ? 'Điểm danh theo lớp' : 'Vắng mặt theo lớp')
+                };
+            });
+
+            progressText.textContent = `0 / ${items.length}`;
 
             try {
-                await API.post('/attendance/manual', {
-                    employee_id: parseInt(empId, 10),
-                    type,
-                    note
-                });
+                let batchSuccess = false;
+                try {
+                    const res = await API.post('/attendance/manual-batch', { items });
+                    if (res && res.ok) {
+                        batchSuccess = true;
+                    }
+                } catch (batchErr) {
+                    console.warn('Batch endpoint fallback', batchErr);
+                }
 
+                if (!batchSuccess) {
+                    let completed = 0;
+                    const promises = items.map(async (item) => {
+                        try {
+                            if (item.status === 'present') {
+                                await API.post('/attendance/manual', {
+                                    employee_id: item.employee_id,
+                                    type: 'in',
+                                    note: item.note
+                                });
+                            } else {
+                                await API.post('/attendance/manual', {
+                                    employee_id: item.employee_id,
+                                    type: 'absent',
+                                    note: item.note
+                                });
+                            }
+                        } catch (err) {
+                            console.log('Item attend result:', err.message);
+                        } finally {
+                            completed++;
+                            progressText.textContent = `${completed} / ${items.length}`;
+                        }
+                    });
+                    await Promise.allSettled(promises);
+                }
+
+                progressText.textContent = `${items.length} / ${items.length} - Hoàn tất!`;
+                alert(`Đã lưu bảng điểm danh thành công cho ${items.length} sinh viên!`);
                 closeManualModal();
-                alert('Đã điểm danh thủ công thành công!');
                 await loadMyHistory();
             } catch (err) {
-                manualCheckError.textContent = err.data?.error || err.message || 'Lỗi khi điểm danh thủ công';
+                manualCheckError.textContent = 'Lỗi lưu điểm danh: ' + (err.message || 'Không rõ lỗi');
                 manualCheckError.hidden = false;
             } finally {
-                btnSubmit.disabled = false;
-                btnSubmit.textContent = 'Xác nhận Điểm danh';
+                btnSubmitRollCall.disabled = false;
+                btnSubmitRollCall.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Lưu bảng điểm danh lớp`;
+                manualProgress.style.display = 'none';
             }
         });
     }

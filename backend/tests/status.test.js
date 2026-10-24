@@ -14,24 +14,27 @@ function mockNow(h, m) {
 
 describe('statusForCheckIn', () => {
     test('on_time when exactly at WORK_START', () => {
-        expect(statusForCheckIn(mockNow(1, 30), '2024-01-15')).toBe('on_time');  // 01:30 UTC = 08:30 VN
+        expect(statusForCheckIn(mockNow(0, 0), '2024-01-15')).toBe('on_time');  // 00:00 UTC = 07:00 VN
     });
     test('on_time when within grace', () => {
-        expect(statusForCheckIn(mockNow(1, 35), '2024-01-15')).toBe('on_time');  // 08:35 VN
+        expect(statusForCheckIn(mockNow(0, 5), '2024-01-15')).toBe('on_time');  // 00:05 UTC = 07:05 VN
     });
     test('late after grace', () => {
-        expect(statusForCheckIn(mockNow(2, 0), '2024-01-15')).toBe('late');  // 09:00 VN
+        expect(statusForCheckIn(mockNow(0, 15), '2024-01-15')).toBe('late');    // 00:15 UTC = 07:15 VN
+    });
+    test('on_time with custom student shift start', () => {
+        expect(statusForCheckIn(mockNow(6, 0), '2024-01-15', '13:00')).toBe('on_time'); // 06:00 UTC = 13:00 VN (Afternoon shift)
     });
 });
 
 describe('statusForCheckOut', () => {
     test('on_time at WORK_END', () => {
-        expect(statusForCheckOut(mockNow(10, 30))).toBe('on_time');  // 17:30 VN
+        expect(statusForCheckOut(mockNow(4, 30))).toBe('on_time');              // 04:30 UTC = 11:30 VN
     });
     test('on_time within grace window', () => {
-        expect(statusForCheckOut(mockNow(10, 25))).toBe('on_time');  // 17:25 VN
+        expect(statusForCheckOut(mockNow(4, 25))).toBe('on_time');              // 04:25 UTC = 11:25 VN
     });
     test('early_leave when too early', () => {
-        expect(statusForCheckOut(mockNow(9, 0))).toBe('early_leave');  // 16:00 VN
+        expect(statusForCheckOut(mockNow(3, 0))).toBe('early_leave');           // 03:00 UTC = 10:00 VN
     });
 });

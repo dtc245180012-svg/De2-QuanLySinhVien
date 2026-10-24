@@ -487,6 +487,7 @@
         tbody.innerHTML = '<tr><td colspan="8" class="muted text-center" style="padding: 24px;">Đang tải danh sách sinh viên...</td></tr>';
         try {
             const params = new URLSearchParams();
+            params.set('limit', '500');
             if (deptFilter.value) params.set('department_id', deptFilter.value);
             if (statusFilter.value) params.set('status', statusFilter.value);
             if (searchInput.value.trim()) params.set('search', searchInput.value.trim());

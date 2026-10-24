@@ -15,35 +15,35 @@
 
 <br>
 
-## ĐỀ TÀI SỐ 27:
-# THIẾT KẾ, TRIỂN KHAI VÀ QUẢN TRỊ HỆ THỐNG ĐIỂM DANH SINH VIÊN TRÊN NỀN TẢNG CONTAINER VÀ ĐIỆN TOÁN ĐÁM MÂY
+## ĐỀ TÀI SỐ 02:
+# THIẾT KẾ, TRIỂN KHAI VÀ QUẢN TRỊ HỆ THỐNG QUẢN LÝ SINH VIÊN TRÊN NỀN TẢNG CONTAINER VÀ ĐIỆN TOÁN ĐÁM MÂY
 
 <br><br><br>
 
 <table align="center" style="font-size: 16px; border: none;">
   <tr>
     <td align="left"><b>Giảng viên hướng dẫn:</b></td>
-    <td align="left"><i>Bộ môn Hệ thống Thông tin & Mạng máy tính</i></td>
+    <td align="left"><b>TS. Hoàng Văn Tâm</b></td>
   </tr>
   <tr>
     <td align="left"><b>Sinh viên thực hiện:</b></td>
-    <td align="left"><b>DTC245160039</b></td>
+    <td align="left"><b>Ngô Hoàng Lan (DTC245180012)</b></td>
   </tr>
   <tr>
     <td align="left"><b>Mã sinh viên:</b></td>
-    <td align="left"><b>DTC245160039</b></td>
+    <td align="left"><b>DTC245180012</b></td>
   </tr>
   <tr>
     <td align="left"><b>Email sinh viên:</b></td>
-    <td align="left"><code>dtc245160039@ictu.edu.vn</code></td>
+    <td align="left"><code>dtc245180012@ictu.edu.vn</code></td>
   </tr>
   <tr>
     <td align="left"><b>GitHub Repository:</b></td>
-    <td align="left"><a href="https://github.com/dtc245160039-max/dtc245160039-De27-HeThongDiemDanh">dtc245160039-De27-HeThongDiemDanh</a></td>
+    <td align="left"><a href="https://github.com/dtc245180012-svg/De2-QuanLySinhVien">De2-QuanLySinhVien</a></td>
   </tr>
   <tr>
     <td align="left"><b>Tài khoản GitHub:</b></td>
-    <td align="left"><code>dtc245160039-max</code></td>
+    <td align="left"><code>dtc245180012-svg</code></td>
   </tr>
 </table>
 
@@ -188,7 +188,7 @@ graph TD
 
 | Tiêu chí | Trọng số | Yêu cầu chuẩn của đề bài | Triển khai thực tế trong Đề 27 | Đánh giá |
 |---|:---:|---|---|:---:|
-| **1. Quản lý mã nguồn** | **1.5 điểm** | GitHub repo đặt theo MSSV (`dtc245160039-De27-HeThongDiemDanh`), tối thiểu 3 commit có ý nghĩa, README rõ ràng | Repo đúng định dạng, tài khoản `dtc245160039-max`, 3 commit chia theo 3 giai đoạn hoàn thiện, README chi tiết | **Đạt 1.5/1.5** |
+| **1. Quản lý mã nguồn** | **1.5 điểm** | GitHub repo đặt theo MSSV (`De2-QuanLySinhVien`), tối thiểu 3 commit có ý nghĩa, README rõ ràng | Repo đúng định dạng, tài khoản `dtc245180012-svg`, 3 commit chia theo 3 giai đoạn hoàn thiện, README chi tiết | **Đạt 1.5/1.5** |
 | **2. Ứng dụng & CSDL** | **1.5 điểm** | Triển khai web hoạt động tốt; CSDL MySQL 8.0 kết nối ổn định; có phpMyAdmin quản trị | Web hoàn chỉnh, CSDL MySQL 8.0 InnoDB, tích hợp phpMyAdmin truy cập qua reverse proxy `/phpmyadmin/` | **Đạt 1.5/1.5** |
 | **3. Nginx Reverse Proxy** | **1.5 điểm** | HTTPS tự ký, đủ 6 Security Headers, proxy tới frontend, backend, phpMyAdmin | Proxy cổng 80/443, SSL tự ký hỗ trợ SAN IP, 6 security headers (HSTS, CSP, X-Frame...), rate limiting | **Đạt 1.5/1.5** |
 | **4. Giám sát Prometheus + Grafana** | **1.5 điểm** | Giám sát 4 thành phần: Container, Web server, Host, CSDL MySQL | cAdvisor, Node Exporter, attendance-backend metrics, `mysqld-exporter:9104`, Dashboard 6 panels | **Đạt 1.5/1.5** |
@@ -401,8 +401,8 @@ Nhờ vector đã được chuẩn hóa độ dài Unit Vector ($\|A\| \approx 1
 ### 3.1. Quản lý mã nguồn trên Git & GitHub theo chuẩn quy định
 
 Theo tiêu chí 1 trong thang điểm đánh giá, sinh viên đã thiết lập và quản lý mã nguồn nghiêm túc trên GitHub:
-- **Tên Repository**: `dtc245160039-De27-HeThongDiemDanh` (Đúng cấu trúc [MSSV]-[TênĐềTài]).
-- **Tài khoản GitHub**: `dtc245160039-max` (Email: `dtc245160039@ictu.edu.vn`).
+- **Tên Repository**: `De2-QuanLySinhVien` (Đúng cấu trúc [MSSV]-[TênĐềTài]).
+- **Tài khoản GitHub**: `dtc245180012-svg` (Email: `dtc245180012@ictu.edu.vn`).
 - **Chiến lược phân bổ 3 Commit có ý nghĩa**:
 
 ```mermaid
@@ -489,7 +489,7 @@ ST = Thai Nguyen
 L = Thai Nguyen City
 O = ICTU
 OU = CNTT - De 27
-CN = dtc245160039-attendance.local
+CN = dtc245180012-attendance.local
 
 [v3_req]
 keyUsage = critical, digitalSignature, keyEncipherment
@@ -712,7 +712,7 @@ Quy trình kiểm thử được thực hiện trên máy ảo Ubuntu Server the
 |                                    URL: https://<IP_UBUNTU>/attendance.html                             |
 |                                                                                                         |
 |  Kỳ vọng: Trình duyệt hiển thị khóa bảo mật HTTPS, khung camera nhận diện khuôn mặt sinh viên,          |
-|           thẻ thông báo "Điểm danh thành công", hiển thị mã SV DTC245160039 và trạng thái "Đúng giờ"    |
+|           thẻ thông báo "Điểm danh thành công", hiển thị mã SV DTC245180012 và trạng thái "Đúng giờ"    |
 |                                                                                                         |
 +---------------------------------------------------------------------------------------------------------+
 ```

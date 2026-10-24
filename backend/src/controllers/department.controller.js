@@ -8,7 +8,7 @@ const { logger } = require('../config/logger');
 
 const createValidation = [
     body('name').isString().trim().isLength({ min: 1, max: 128 }),
-    body('description').optional().isString().isLength({ max: 1000 }),
+    body('description').optional({ nullable: true, values: 'null' }).isString().isLength({ max: 1000 }),
     runValidation,
 ];
 

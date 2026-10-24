@@ -9,8 +9,8 @@ x509_extensions = v3_req
 C = VN
 ST = HCM
 L = HCM
-O = DTC245160039
-OU = De27-HeThongDiemDanh
+O = DTC245180012
+OU = De2-QuanLySinhVien
 CN = localhost
 
 [v3_req]

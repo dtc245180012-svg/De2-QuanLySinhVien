@@ -23,15 +23,39 @@ function timeToMinutes(t) {
     return (parts[0] || 0) * 60 + (parts[1] || 0);
 }
 
+function getVietnamTimeParts(date = new Date()) {
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Ho_Chi_Minh',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+    });
+    const map = {};
+    for (const p of formatter.formatToParts(date)) {
+        map[p.type] = p.value;
+    }
+    const dateStr = `${map.year}-${map.month}-${map.day}`;
+    const hours = parseInt(map.hour, 10);
+    const minutes = parseInt(map.minute, 10);
+    const seconds = parseInt(map.second, 10);
+    return { dateStr, hours, minutes, seconds, totalMinutes: hours * 60 + minutes };
+}
+
 function statusForCheckIn(now, dateStr, empStart) {
-    const cur = now.getHours() * 60 + now.getMinutes();
+    const vnTime = (now instanceof Date) ? getVietnamTimeParts(now) : getVietnamTimeParts();
+    const cur = vnTime.totalMinutes;
     const startStr = empStart || WORK_START;
     const start = timeToMinutes(startStr) + LATE_GRACE;
     return cur <= start ? 'on_time' : 'late';
 }
 
 function statusForCheckOut(now, empEnd) {
-    const cur = now.getHours() * 60 + now.getMinutes();
+    const vnTime = (now instanceof Date) ? getVietnamTimeParts(now) : getVietnamTimeParts();
+    const cur = vnTime.totalMinutes;
     const endStr = empEnd || WORK_END;
     const end = timeToMinutes(endStr) - EARLY_GRACE;
     return cur >= end ? 'on_time' : 'early_leave';
@@ -120,8 +144,8 @@ async function faceCheck(req, res) {
 
         // 2) Insert check_in or check_out for today
         const now = new Date();
-        const localNow = new Date(now.getTime() + 7 * 60 * 60 * 1000);
-        const localDate = localNow.toISOString().slice(0, 10);
+        const vnTime = getVietnamTimeParts(now);
+        const localDate = vnTime.dateStr;
 
         const existing = await pool.query(
             'SELECT id, check_in, check_out, status FROM attendance WHERE employee_id = ? AND date = ?',
@@ -130,7 +154,7 @@ async function faceCheck(req, res) {
 
         if (existing.rowCount === 0) {
             // Check-in
-            const status = statusForCheckIn(localNow, localDate, emp.work_start);
+            const status = statusForCheckIn(now, localDate, emp.work_start);
             await pool.query(
                 `INSERT INTO attendance
                     (employee_id, date, check_in, status, check_in_status, check_in_method, confidence_in)
@@ -160,7 +184,7 @@ async function faceCheck(req, res) {
         const row = existing.rows[0];
         if (!row.check_out) {
             // Check-out
-            const statusOut = statusForCheckOut(localNow, emp.work_end);
+            const statusOut = statusForCheckOut(now, emp.work_end);
             await pool.query(
                 `UPDATE attendance
                  SET check_out = NOW(), check_out_status = ?,
@@ -210,8 +234,9 @@ async function faceCheck(req, res) {
 
 async function manualCheck(req, res) {
     const { employee_id, type, note } = req.body;
-    const localNow = new Date(Date.now() + 7 * 60 * 60 * 1000);
-    const localDate = localNow.toISOString().slice(0, 10);
+    const now = new Date();
+    const vnTime = getVietnamTimeParts(now);
+    const localDate = vnTime.dateStr;
     try {
         const empR = await pool.query('SELECT work_start, work_end FROM employees WHERE id = ?', [employee_id]);
         const empStart = empR.rows[0] ? empR.rows[0].work_start : WORK_START;
@@ -225,7 +250,7 @@ async function manualCheck(req, res) {
             if (existing.rowCount > 0 && existing.rows[0].check_in) {
                 return res.status(409).json({ ok: false, error: 'Hôm nay sinh viên đã điểm danh vào rồi' });
             }
-            const status = statusForCheckIn(localNow, localDate, empStart);
+            const status = statusForCheckIn(now, localDate, empStart);
             if (existing.rowCount === 0) {
                 await pool.query(
                     `INSERT INTO attendance (employee_id, date, check_in, status, check_in_status, check_in_method, note)
@@ -246,7 +271,7 @@ async function manualCheck(req, res) {
             if (existing.rowCount === 0 || !existing.rows[0].check_in) {
                 return res.status(409).json({ ok: false, error: 'Cần điểm danh vào trước khi điểm danh ra' });
             }
-            const statusOut = statusForCheckOut(localNow, empEnd);
+            const statusOut = statusForCheckOut(now, empEnd);
             await pool.query(
                 `UPDATE attendance SET check_out = NOW(), check_out_status = ?,
                         status = (CASE WHEN status = 'late' THEN 'late' ELSE ? END),
@@ -257,10 +282,91 @@ async function manualCheck(req, res) {
             const r = await pool.query('SELECT * FROM attendance WHERE id = ?', [existing.rows[0].id]);
             return res.json({ ok: true, data: r.rows[0] });
         }
-        return res.status(400).json({ ok: false, error: 'Loại điểm danh phải là in (vào) hoặc out (ra)' });
+        if (type === 'absent') {
+            if (existing.rowCount === 0) {
+                await pool.query(
+                    `INSERT INTO attendance (employee_id, date, status, check_in_status, check_in_method, note)
+                     VALUES (?, ?, 'absent', 'absent', 'manual', ?)`,
+                    [employee_id, localDate, note || 'Vắng mặt theo sổ điểm danh']
+                );
+            } else {
+                await pool.query(
+                    `UPDATE attendance SET status = 'absent', check_in = NULL, check_in_status = 'absent', check_out = NULL, check_out_status = NULL, check_in_method = 'manual', note = ?
+                     WHERE id = ?`,
+                    [note || 'Vắng mặt theo sổ điểm danh', existing.rows[0].id]
+                );
+            }
+            const r = await pool.query('SELECT * FROM attendance WHERE employee_id = ? AND date = ?', [employee_id, localDate]);
+            return res.json({ ok: true, data: r.rows[0] });
+        }
+        return res.status(400).json({ ok: false, error: 'Loại điểm danh phải là in (vào), out (ra) hoặc absent (vắng)' });
     } catch (err) {
         logger.error('manual check', { err: err.message });
         return res.status(500).json({ ok: false, error: 'Lỗi điểm danh thủ công: ' + err.message });
+    }
+}
+
+async function manualBatch(req, res) {
+    const { items } = req.body;
+    if (!Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ ok: false, error: 'Danh sách sinh viên điểm danh không hợp lệ' });
+    }
+    const now = new Date();
+    const vnTime = getVietnamTimeParts(now);
+    const localDate = vnTime.dateStr;
+    let successCount = 0;
+
+    try {
+        for (const item of items) {
+            const empId = parseInt(item.employee_id, 10);
+            if (!empId) continue;
+            const status = item.status || 'present';
+            const note = item.note || (status === 'present' ? 'Điểm danh theo lớp' : 'Vắng mặt theo lớp');
+
+            const existing = await pool.query(
+                'SELECT id, check_in FROM attendance WHERE employee_id = ? AND date = ?',
+                [empId, localDate]
+            );
+
+            if (status === 'present') {
+                const empR = await pool.query('SELECT work_start FROM employees WHERE id = ?', [empId]);
+                const empStart = empR.rows[0] ? empR.rows[0].work_start : WORK_START;
+                const inStatus = statusForCheckIn(localNow, localDate, empStart);
+
+                if (existing.rowCount === 0) {
+                    await pool.query(
+                        `INSERT INTO attendance (employee_id, date, check_in, status, check_in_status, check_in_method, note)
+                         VALUES (?, ?, NOW(), ?, ?, 'manual', ?)`,
+                        [empId, localDate, inStatus, inStatus, note]
+                    );
+                } else {
+                    await pool.query(
+                        `UPDATE attendance SET check_in = COALESCE(check_in, NOW()), status = ?, check_in_status = ?, check_in_method = 'manual', note = ?
+                         WHERE id = ?`,
+                        [inStatus, inStatus, note, existing.rows[0].id]
+                    );
+                }
+            } else if (status === 'absent') {
+                if (existing.rowCount === 0) {
+                    await pool.query(
+                        `INSERT INTO attendance (employee_id, date, status, check_in_status, check_in_method, note)
+                         VALUES (?, ?, 'absent', 'absent', 'manual', ?)`,
+                        [empId, localDate, note]
+                    );
+                } else {
+                    await pool.query(
+                        `UPDATE attendance SET status = 'absent', check_in = NULL, check_in_status = 'absent', check_out = NULL, check_out_status = NULL, check_in_method = 'manual', note = ?
+                         WHERE id = ?`,
+                        [note, existing.rows[0].id]
+                    );
+                }
+            }
+            successCount++;
+        }
+        return res.json({ ok: true, count: successCount, message: `Đã lưu điểm danh cho ${successCount} sinh viên` });
+    } catch (err) {
+        logger.error('manualBatch failed', { err: err.message });
+        return res.status(500).json({ ok: false, error: 'Lỗi điểm danh theo lớp: ' + err.message });
     }
 }
 
@@ -295,7 +401,7 @@ async function list(req, res) {
         FROM attendance a
         JOIN employees e ON e.id = a.employee_id
         ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
-        ORDER BY a.date DESC, a.employee_id ASC
+        ORDER BY a.date DESC, COALESCE(a.check_out, a.check_in, a.created_at) DESC, a.id DESC
         LIMIT ? OFFSET ?
     `;
     try {
@@ -351,7 +457,7 @@ async function myHistory(req, res) {
 }
 
 module.exports = {
-    faceCheck, manualCheck, list, myHistory,
+    faceCheck, manualCheck, manualBatch, list, myHistory,
     listValidation,
-    internal: { statusForCheckIn, statusForCheckOut, timeToMinutes, FACE_MATCH_THRESHOLD },
+    internal: { statusForCheckIn, statusForCheckOut, timeToMinutes, getVietnamTimeParts, FACE_MATCH_THRESHOLD },
 };

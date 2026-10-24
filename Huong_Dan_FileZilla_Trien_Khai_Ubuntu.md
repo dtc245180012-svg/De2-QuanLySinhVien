@@ -1,9 +1,9 @@
 # HƯỚNG DẪN CHI TIẾT DÙNG FILEZILLA CHUYỂN TOÀN BỘ CODE SANG MÁY ẢO UBUNTU SERVER ĐỂ TRIỂN KHAI
 
-> **Đề tài:** Đề 27 — Hệ thống Điểm danh Sinh viên (Trường ĐH CNTT & Truyền thông - ICTU)  
-> **Sinh viên thực hiện:** DTC245160039  
-> **Email:** dtc245160039@ictu.edu.vn  
-> **GitHub:** [dtc245160039-max/dtc245160039-De27-HeThongDiemDanh](https://github.com/dtc245160039-max/dtc245160039-De27-HeThongDiemDanh)  
+> **Đề tài:** Đề 2 — Hệ thống Quản lý Sinh viên (Trường ĐH CNTT & Truyền thông - ICTU)  
+> **Sinh viên thực hiện:** DTC245180012  
+> **Email:** dtc245180012@ictu.edu.vn  
+> **GitHub:** [dtc245180012-svg/De2-QuanLySinhVien](https://github.com/dtc245180012-svg/De2-QuanLySinhVien)  
 > **Mục tiêu:** Hướng dẫn từng bước từ máy tính thật (Windows) dùng FileZilla kết nối SFTP sang máy ảo Ubuntu Server, chuyển mã nguồn và khởi động hệ thống chạy bằng Docker Compose.
 
 ---
@@ -113,9 +113,9 @@ Giao diện FileZilla chia làm 2 bên:
   - Hiện đang ở: `/home/<tên_user_của_bạn>/`
   - Bấm chuột phải vào khoảng trống bên phải → chọn **Create directory (Tạo thư mục)** → đặt tên là:
     ```
-    dtc245160039-De27-HeThongDiemDanh
+    De2-QuanLySinhVien
     ```
-  - Bấm đúp chuột để vào bên trong thư mục `dtc245160039-De27-HeThongDiemDanh` vừa tạo.
+  - Bấm đúp chuột để vào bên trong thư mục `De2-QuanLySinhVien` vừa tạo.
 
 - **Thực hiện Copy**:
   - Ở khung **bên trái**, bấm phím `Ctrl + A` để bôi đen chọn tất cả các file và thư mục.
@@ -131,7 +131,7 @@ Quay trở lại cửa sổ dòng lệnh Terminal trên máy ảo Ubuntu (hoặc
 
 ### 3.1. Di chuyển vào thư mục dự án vừa upload
 ```bash
-cd ~/dtc245160039-De27-HeThongDiemDanh
+cd ~/De2-QuanLySinhVien
 ls -la
 ```
 *Bạn sẽ thấy đầy đủ toàn bộ file mã nguồn, thư mục, file Excel và các file `.env.example`, `docker-compose.yml`.*
@@ -211,7 +211,7 @@ Mở trình duyệt Web trên máy Windows (Chrome, Edge hoặc Firefox) và nh�
 |---|---|---|---|
 | **Quản trị viên (Admin)** | `admin` | `Admin@Attendance2024!` | Toàn quyền quản lý sinh viên (118 SV cả 2 lớp KHMT & KTPM), phân ca học, xem thống kê, import Excel |
 | **Giáo vụ Quản lý Lớp (HR)** | `hr01` *(hoặc `giaovu`)* | `Hr@Attendance2024!` | Quản lý danh sách sinh viên, ca học và điểm danh thủ công |
-| **Sinh viên (KHMT K23A)** | `dtc245160039` | `Dtc245160039@2024!` | Tra cứu lịch sử điểm danh của sinh viên Đàm Đức Lương |
+| **Sinh viên (KTPM K23A)** | `dtc245180012` | `Dtc245180012@2024!` | Tra cứu lịch sử điểm danh của sinh viên Ngô Hoàng Lan |
 | **Sinh viên (KTPM K23A)** | `dtc245180148` | `Dtc245180148@2024!` | Tra cứu lịch sử điểm danh của sinh viên Nguyễn Quốc Anh |
 | **Máy Điểm Danh Cửa Lớp (Kiosk)** | `chamcong` *(hoặc `kiosk`)* | `Chamcong@2024!` | Chế độ Kiosk: Mở camera quẹt mặt điểm danh, tự động khóa trang quản trị |
 
@@ -257,7 +257,7 @@ Mở trình duyệt Web trên máy Windows (Chrome, Edge hoặc Firefox) và nh�
 
 ### Lỗi 2: FileZilla báo "Permission denied" khi tải tệp lên
 - **Nguyên nhân:** Bạn đang tải file vào thư mục mà user không có quyền ghi (ví dụ `/var/www/` hoặc `/root/`).
-- **Cách sửa:** Luôn tải vào thư mục người dùng cá nhân: `/home/<tên_user_của_bạn>/dtc245160039-De27-HeThongDiemDanh`.
+- **Cách sửa:** Luôn tải vào thư mục người dùng cá nhân: `/home/<tên_user_của_bạn>/De2-QuanLySinhVien`.
 
 ### Lỗi 3: Không thấy file `.env.example` trên FileZilla
 - **Nguyên nhân:** File có dấu chấm ở đầu bị ẩn theo mặc định.
@@ -285,7 +285,7 @@ Mở trình duyệt Web trên máy Windows (Chrome, Edge hoặc Firefox) và nh�
 
 ```bash
 # 1. Sau khi dùng FileZilla upload xong, vào thư mục:
-cd ~/dtc245160039-De27-HeThongDiemDanh
+cd ~/De2-QuanLySinhVien
 
 # 2. Tạo .env & cấp quyền script:
 cp .env.example .env

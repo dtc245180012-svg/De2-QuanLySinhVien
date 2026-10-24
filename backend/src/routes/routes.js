@@ -35,7 +35,7 @@ router.get('/auth/me', authRequired, authCtrl.me);
 router.get('/departments', authRequired, requireRole('admin', 'hr', 'employee'), deptCtrl.list);
 router.post('/departments', authRequired, requireRole('admin', 'hr'), deptCtrl.createValidation, deptCtrl.create);
 router.put('/departments/:id', authRequired, requireRole('admin', 'hr'), deptCtrl.update);
-router.delete('/departments/:id', authRequired, requireRole('admin'), deptCtrl.softDelete);
+router.delete('/departments/:id', authRequired, requireRole('admin', 'hr'), deptCtrl.softDelete);
 
 // ---------- Employees ----------
 router.get('/employees', authRequired, requireRole('admin', 'hr', 'employee'), empCtrl.list);
@@ -57,6 +57,7 @@ router.post('/attendance/face-check',
     upload.single('file'),
     attCtrl.faceCheck);
 router.post('/attendance/manual', authRequired, requireRole('admin', 'hr'), attCtrl.manualCheck);
+router.post('/attendance/manual-batch', authRequired, requireRole('admin', 'hr'), attCtrl.manualBatch);
 router.get('/attendance', authRequired, requireRole('admin', 'hr', 'kiosk'),
     attCtrl.listValidation, attCtrl.list);
 router.get('/attendance/me', authRequired, attCtrl.myHistory);
